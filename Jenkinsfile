@@ -44,11 +44,11 @@ spec:
     }
 
     parameters {
-        string(name: 'IMAGE_NAME', defaultValue: 'kaiwenyao/dublin-flask-app', description: 'Docker image name')
+        string(name: 'IMAGE_NAME', defaultValue: 'kaiwenyao/flask-app', description: 'Docker image name')
         string(name: 'IMAGE_TAG', defaultValue: '', description: 'Image tag (empty means BUILD_NUMBER)')
         booleanParam(name: 'PUSH_IMAGE', defaultValue: true, description: 'Push image to registry')
         booleanParam(name: 'DEPLOY_TO_EC2', defaultValue: false, description: 'Deploy container to EC2')
-        string(name: 'CONTAINER_NAME', defaultValue: 'dublin-flask-app', description: 'Container name on EC2')
+        string(name: 'CONTAINER_NAME', defaultValue: 'flask-app', description: 'Container name on EC2')
         string(name: 'CONTAINER_ENV_FILE', defaultValue: '/opt/flask-app/.env', description: 'Env file path on EC2')
         string(name: 'EC2_SSH_KEY_CREDENTIALS_ID', defaultValue: 'server-ssh-key', description: 'Jenkins SSH key credential ID')
     }
