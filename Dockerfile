@@ -7,12 +7,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 入口脚本（先复制并赋予执行权限）
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
-# 应用代码
+# 应用代码（含 entrypoint.sh）
 COPY . .
+
+# 入口脚本必须在 COPY . . 之后赋予执行权限，否则会被覆盖
+RUN chmod +x entrypoint.sh
 
 # 通过环境变量指定 Flask 应用（也可在运行时覆盖）
 ENV FLASK_APP=app.py
