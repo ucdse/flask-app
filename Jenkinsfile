@@ -115,7 +115,7 @@ spec:
         stage('4. 部署到 EC2') {
             when {
                 allOf {
-                    expression { return params.DEPLOY_TO_EC2 }
+                    branch 'main'
                     not { changeRequest() }
                 }
             }
