@@ -163,6 +163,7 @@ docker rm -f "$CONTAINER_NAME" || true
 docker run -d \
   --name "$CONTAINER_NAME" \
   --restart unless-stopped \
+  --network flask-app \
   -p 5000:5000 \
   --env-file "$CONTAINER_ENV_FILE" \
   "$FULL_IMAGE" run
