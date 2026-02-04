@@ -54,7 +54,7 @@ spec:
     }
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
+        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
         SERVER_HOST_CREDENTIALS_ID = 'aws-ec2'
         ENV_FILE_CREDENTIALS_ID = 'flask-prod.env'
     }
