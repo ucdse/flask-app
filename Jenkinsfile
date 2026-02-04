@@ -135,6 +135,10 @@ spec:
                           apk add --no-cache openssh-client bash
                         fi
 
+                        # 在 EC2 上创建 .env 所在目录（若不存在）
+                        ENV_DIR=$(dirname "${CONTAINER_ENV_FILE}")
+                        ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_HOST}" "mkdir -p ${ENV_DIR}"
+
                         # 将 Jenkins 中的 .env credential 上传到 EC2 指定路径
                         scp -i "${SSH_KEY}" -o StrictHostKeyChecking=no "${ENV_FILE}" "${SSH_USER}@${SERVER_HOST}:${CONTAINER_ENV_FILE}"
 
