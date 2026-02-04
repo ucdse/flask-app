@@ -1,0 +1,11 @@
+# 不打包进镜像
+.env
+.venv
+venv
+__pycache__
+*.pyc
+.git
+.gitignore
+.dockerignore
+*.md
+notes/
