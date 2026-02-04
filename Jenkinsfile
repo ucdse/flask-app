@@ -150,23 +150,23 @@ spec:
 
                         ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=no "${SSH_USER}@${SERVER_HOST}" \
                         "PASS_B64='${PASS_B64}' USER_B64='${USER_B64}' IMAGE_B64='${IMAGE_B64}' NAME_B64='${NAME_B64}' ENV_FILE_B64='${ENV_FILE_B64}' bash -s" <<'REMOTE'
-                        set -e
-                        DOCKER_PASS=$(echo "$PASS_B64" | base64 -d)
-                        DOCKER_USER=$(echo "$USER_B64" | base64 -d)
-                        FULL_IMAGE=$(echo "$IMAGE_B64" | base64 -d)
-                        CONTAINER_NAME=$(echo "$NAME_B64" | base64 -d)
-                        CONTAINER_ENV_FILE=$(echo "$ENV_FILE_B64" | base64 -d)
+set -e
+DOCKER_PASS=$(echo "$PASS_B64" | base64 -d)
+DOCKER_USER=$(echo "$USER_B64" | base64 -d)
+FULL_IMAGE=$(echo "$IMAGE_B64" | base64 -d)
+CONTAINER_NAME=$(echo "$NAME_B64" | base64 -d)
+CONTAINER_ENV_FILE=$(echo "$ENV_FILE_B64" | base64 -d)
 
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker pull "$FULL_IMAGE"
-                        docker rm -f "$CONTAINER_NAME" || true
-                        docker run -d \
-                          --name "$CONTAINER_NAME" \
-                          --restart unless-stopped \
-                          -p 5000:5000 \
-                          --env-file "$CONTAINER_ENV_FILE" \
-                          "$FULL_IMAGE" run
-                        REMOTE
+echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+docker pull "$FULL_IMAGE"
+docker rm -f "$CONTAINER_NAME" || true
+docker run -d \
+  --name "$CONTAINER_NAME" \
+  --restart unless-stopped \
+  -p 5000:5000 \
+  --env-file "$CONTAINER_ENV_FILE" \
+  "$FULL_IMAGE" run
+REMOTE
                         '''
                     }
                 }
