@@ -52,3 +52,36 @@ def validate_user_registration(payload: Any) -> dict[str, str | None]:
         "password": password,
         "avatar_url": normalized_avatar_url,
     }
+
+
+def validate_login_request(payload: Any) -> dict[str, str]:
+    """校验登录请求体：identifier（用户名或邮箱）+ password。"""
+    if not isinstance(payload, dict):
+        raise UserSchemaError("Request body must be a JSON object.")
+
+    identifier = str(payload.get("identifier", "")).strip()
+    password = str(payload.get("password", ""))
+
+    if not identifier:
+        raise UserSchemaError("identifier is required (username or email).")
+    if len(identifier) > 120:
+        raise UserSchemaError("identifier is too long.")
+
+    if not password:
+        raise UserSchemaError("password is required.")
+
+    return {"identifier": identifier, "password": password}
+
+
+def validate_refresh_request(payload: Any) -> dict[str, str]:
+    """校验刷新令牌请求体：refresh_token。"""
+    if not isinstance(payload, dict):
+        raise UserSchemaError("Request body must be a JSON object.")
+
+    refresh_token = payload.get("refresh_token")
+    if refresh_token is None:
+        raise UserSchemaError("refresh_token is required.")
+    if not isinstance(refresh_token, str) or not refresh_token.strip():
+        raise UserSchemaError("refresh_token must be a non-empty string.")
+
+    return {"refresh_token": refresh_token.strip()}
