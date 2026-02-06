@@ -43,6 +43,19 @@ docker run -d --name flask-app --network flask-app --env-file .env -p 5000:5000 
 
 需在镜像同目录准备 `.env`（含 `DATABASE_URL`、`SECRET_KEY` 等），或改用 `-e DATABASE_URL=...` 传环境变量。
 
+## 用户注册接口
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/users/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "alice_01",
+    "email": "alice@example.com",
+    "password": "password123",
+    "avatar_url": "https://example.com/avatar.png"
+  }'
+```
+
 ## Jenkins CI/CD
 
 项目使用 Jenkins Pipeline 自动构建和部署。
