@@ -14,7 +14,7 @@ COPY . .
 RUN chmod +x entrypoint.sh
 
 # 通过环境变量指定 Flask 应用（也可在运行时覆盖）
-ENV FLASK_APP=app.py
+ENV FLASK_APP=app:create_app
 
 EXPOSE 5000
 

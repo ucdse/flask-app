@@ -75,7 +75,7 @@ spec:
                     . .venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
-                    python -m py_compile app.py config.py extensions.py models.py
+                    python -m py_compile config.py run.py wsgi.py $(find app -name '*.py')
                     '''
                 }
             }
@@ -166,7 +166,7 @@ docker run -d \
   --network flask-app \
   -p 5000:5000 \
   --env-file "$CONTAINER_ENV_FILE" \
-  "$FULL_IMAGE" run
+  "$FULL_IMAGE"
 REMOTE
                         '''
                     }

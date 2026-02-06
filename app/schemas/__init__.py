@@ -1,0 +1,1 @@
+# Schema/DTO package.

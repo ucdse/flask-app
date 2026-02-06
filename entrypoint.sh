@@ -10,4 +10,4 @@ flask db upgrade
 # 2. 启动 Gunicorn
 echo "Starting Gunicorn..."
 # exec 能够让 gunicorn 替换当前 shell 进程，接收系统信号
-exec gunicorn -w 4 -b 0.0.0.0:5000 --access-logfile - app:app
+exec gunicorn -w 4 -b 0.0.0.0:5000 --access-logfile - wsgi:app

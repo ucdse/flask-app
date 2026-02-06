@@ -11,36 +11,24 @@
    ```
 3. 执行迁移（与 scraper 共用 DB 时，必须先在此执行）
    ```bash
-   flask --app app.py db upgrade
+   flask --app app:create_app db upgrade
    ```
 4. 启动服务
    ```bash
-   python app.py
+   python run.py
    ```
 
 ## Docker 运行
 
-镜像入口支持两种命令，通过**启动容器时传入的参数**选择：
-
-| 参数      | 说明                         |
-|-----------|------------------------------|
-| `init-db` | 仅执行迁移，创建/更新数据库表 |
-| `run`     | 运行 Flask 应用（默认）      |
+容器启动后会先执行 `flask db upgrade`，再启动 Gunicorn（`wsgi:app`）。
 
 **构建镜像：**
 ```bash
 docker build -t flask-app .
 ```
 
-**只创建数据库表（执行迁移后退出）：**
-```bash
-docker run --rm --env-file .env flask-app init-db
-```
-
 **运行 Flask 应用：**
 ```bash
-docker run --rm --env-file .env -p 5000:5000 flask-app run
-# 或省略 run（默认即为 run）
 docker run --rm --env-file .env -p 5000:5000 flask-app
 ```
 
@@ -50,7 +38,7 @@ docker run --rm --env-file .env -p 5000:5000 flask-app
 docker network create flask-app
 
 # 运行时加入网络
-docker run -d --name flask-app --network flask-app --env-file .env -p 5000:5000 flask-app run
+docker run -d --name flask-app --network flask-app --env-file .env -p 5000:5000 flask-app
 ```
 
 需在镜像同目录准备 `.env`（含 `DATABASE_URL`、`SECRET_KEY` 等），或改用 `-e DATABASE_URL=...` 传环境变量。
