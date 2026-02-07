@@ -4,15 +4,21 @@ from app.extensions import db
 from app.models import User
 from app.schemas.user_schema import (
     UserSchemaError,
+    validate_activate_by_token_request,
+    validate_activate_request,
     validate_login_request,
     validate_refresh_request,
+    validate_send_verification_code_request,
     validate_user_registration,
 )
 from app.services.user_service import (
     AuthError,
+    activate_by_token,
+    activate_user,
     login_user,
     refresh_tokens,
     register_user,
+    send_verification_code,
     serialize_user,
     verify_access_token,
     UserRegistrationError,
@@ -39,6 +45,48 @@ def register():
         return jsonify({"code": code_map.get(exc.error_code, 40000), "msg": exc.message, "data": None}), exc.status_code
 
     return jsonify({"code": 0, "msg": "user registered", "data": user_data}), 201
+
+
+@user_bp.post("/send-verification-code")
+def send_code():
+    """请求发送验证码：请求体 { "identifier": "用户名或邮箱" }。未激活用户每分钟最多请求一次；仅最新验证码有效。"""
+    payload = request.get_json(silent=True)
+    try:
+        validated = validate_send_verification_code_request(payload)
+        data = send_verification_code(validated["identifier"])
+    except UserSchemaError as exc:
+        return jsonify({"code": 40001, "msg": str(exc), "data": None}), 400
+    except AuthError as exc:
+        return jsonify({"code": 40101, "msg": exc.message, "data": None}), exc.status_code
+    return jsonify({"code": 0, "msg": "verification code sent", "data": data}), 200
+
+
+@user_bp.post("/activate")
+def activate():
+    """激活账户：请求体 { "identifier": "用户名或邮箱", "code": "6位验证码" }，验证码匹配则设为已激活。"""
+    payload = request.get_json(silent=True)
+    try:
+        validated = validate_activate_request(payload)
+        user_data = activate_user(validated["identifier"], validated["code"])
+    except UserSchemaError as exc:
+        return jsonify({"code": 40001, "msg": str(exc), "data": None}), 400
+    except AuthError as exc:
+        return jsonify({"code": 40101, "msg": exc.message, "data": None}), exc.status_code
+    return jsonify({"code": 0, "msg": "account activated", "data": user_data}), 200
+
+
+@user_bp.post("/activate-by-token")
+def activate_by_token_route():
+    """通过邮件中的激活链接 Token 激活账户：请求体 { "token": "..." }。"""
+    payload = request.get_json(silent=True)
+    try:
+        validated = validate_activate_by_token_request(payload)
+        user_data = activate_by_token(validated["token"])
+    except UserSchemaError as exc:
+        return jsonify({"code": 40001, "msg": str(exc), "data": None}), 400
+    except AuthError as exc:
+        return jsonify({"code": 40101, "msg": exc.message, "data": None}), exc.status_code
+    return jsonify({"code": 0, "msg": "account activated", "data": user_data}), 200
 
 
 @user_bp.post("/login")

@@ -85,3 +85,55 @@ def validate_refresh_request(payload: Any) -> dict[str, str]:
         raise UserSchemaError("refresh_token must be a non-empty string.")
 
     return {"refresh_token": refresh_token.strip()}
+
+
+def validate_activate_request(payload: Any) -> dict[str, str]:
+    """校验激活请求体：identifier（用户名或邮箱）+ code（6 位验证码）。"""
+    if not isinstance(payload, dict):
+        raise UserSchemaError("Request body must be a JSON object.")
+
+    identifier = str(payload.get("identifier", "")).strip()
+    code = payload.get("code")
+
+    if not identifier:
+        raise UserSchemaError("identifier is required (username or email).")
+    if len(identifier) > 120:
+        raise UserSchemaError("identifier is too long.")
+
+    if code is None:
+        raise UserSchemaError("code is required.")
+    code_str = str(code).strip()
+    if len(code_str) != 6 or not code_str.isdigit():
+        raise UserSchemaError("code must be a 6-digit string.")
+
+    return {"identifier": identifier, "code": code_str}
+
+
+def validate_send_verification_code_request(payload: Any) -> dict[str, str]:
+    """校验发送验证码请求体：identifier（用户名或邮箱）。"""
+    if not isinstance(payload, dict):
+        raise UserSchemaError("Request body must be a JSON object.")
+
+    identifier = str(payload.get("identifier", "")).strip()
+
+    if not identifier:
+        raise UserSchemaError("identifier is required (username or email).")
+    if len(identifier) > 120:
+        raise UserSchemaError("identifier is too long.")
+
+    return {"identifier": identifier}
+
+
+def validate_activate_by_token_request(payload: Any) -> dict[str, str]:
+    """校验通过 Token 激活的请求体：token（邮件链接中的 token）。"""
+    if not isinstance(payload, dict):
+        raise UserSchemaError("Request body must be a JSON object.")
+
+    token = payload.get("token")
+    if token is None:
+        raise UserSchemaError("token is required.")
+    token_str = str(token).strip()
+    if not token_str:
+        raise UserSchemaError("token must be a non-empty string.")
+
+    return {"token": token_str}
