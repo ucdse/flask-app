@@ -32,6 +32,7 @@ class AuthError(Exception):
 
 def _create_token(
     user_id: int,
+    token_version: int,
     secret: str,
     expires_seconds: int,
     token_type: str,
@@ -39,6 +40,7 @@ def _create_token(
     now = int(time.time())
     payload = {
         "sub": str(user_id),
+        "ver": token_version,
         "type": token_type,
         "iat": now,
         "exp": now + expires_seconds,
@@ -65,18 +67,31 @@ def _extract_user_id(payload: dict[str, Any]) -> int:
         raise AuthError("invalid token payload", 401)
 
 
-def create_access_token(user_id: int) -> str:
+def _extract_token_version(payload: dict[str, Any]) -> int:
+    raw_ver = payload.get("ver", 0)
+    try:
+        token_version = int(raw_ver)
+    except (TypeError, ValueError):
+        raise AuthError("invalid token payload", 401)
+    if token_version < 0:
+        raise AuthError("invalid token payload", 401)
+    return token_version
+
+
+def create_access_token(user_id: int, token_version: int) -> str:
     return _create_token(
         user_id=user_id,
+        token_version=token_version,
         secret=config.JWT_SECRET_KEY,
         expires_seconds=config.JWT_ACCESS_EXPIRES_SECONDS,
         token_type="access",
     )
 
 
-def create_refresh_token(user_id: int) -> str:
+def create_refresh_token(user_id: int, token_version: int) -> str:
     return _create_token(
         user_id=user_id,
+        token_version=token_version,
         secret=config.JWT_REFRESH_SECRET_KEY,
         expires_seconds=config.JWT_REFRESH_EXPIRES_SECONDS,
         token_type="refresh",
@@ -93,7 +108,15 @@ def verify_access_token(token: str) -> dict[str, Any]:
     )
     if payload.get("type") != "access":
         raise AuthError("invalid token type", 401)
-    payload["sub"] = _extract_user_id(payload)
+    user_id = _extract_user_id(payload)
+    token_version = _extract_token_version(payload)
+    user = db.session.get(User, user_id)
+    if user is None or not user.is_active:
+        raise AuthError("user not found or disabled", 401)
+    if token_version != user.token_version:
+        raise AuthError("access token has been revoked", 401)
+    payload["sub"] = user_id
+    payload["ver"] = token_version
     return payload
 
 
@@ -108,6 +131,7 @@ def verify_refresh_token(token: str) -> dict[str, Any]:
     if payload.get("type") != "refresh":
         raise AuthError("invalid token type", 401)
     payload["sub"] = _extract_user_id(payload)
+    payload["ver"] = _extract_token_version(payload)
     return payload
 
 
@@ -127,8 +151,8 @@ def login_user(identifier: str, password: str) -> dict[str, Any]:
         raise AuthError("invalid username/email or password", 401)
 
     return {
-        "access_token": create_access_token(user.id),
-        "refresh_token": create_refresh_token(user.id),
+        "access_token": create_access_token(user.id, user.token_version),
+        "refresh_token": create_refresh_token(user.id, user.token_version),
         "expires_in": config.JWT_ACCESS_EXPIRES_SECONDS,
         "token_type": "Bearer",
     }
@@ -138,17 +162,33 @@ def refresh_tokens(refresh_token: str) -> dict[str, Any]:
     """使用 refresh 令牌换取新的 access_token 与 refresh_token。"""
     payload = verify_refresh_token(refresh_token)
     user_id = payload.get("sub")
+    token_version = payload.get("ver")
     if not user_id:
         raise AuthError("invalid refresh token", 401)
     user = db.session.get(User, user_id)
     if user is None or not user.is_active:
         raise AuthError("user not found or disabled", 401)
+    if token_version != user.token_version:
+        raise AuthError("refresh token has been revoked", 401)
     return {
-        "access_token": create_access_token(user.id),
-        "refresh_token": create_refresh_token(user.id),
+        "access_token": create_access_token(user.id, user.token_version),
+        "refresh_token": create_refresh_token(user.id, user.token_version),
         "expires_in": config.JWT_ACCESS_EXPIRES_SECONDS,
         "token_type": "Bearer",
     }
+
+
+def logout_user(access_token: str) -> None:
+    """
+    使当前 access token 所属用户的全部会话失效。
+    实现方式：递增 token_version，旧 access/refresh token 将全部失效。
+    """
+    payload = verify_access_token(access_token)
+    user = db.session.get(User, payload["sub"])
+    if user is None or not user.is_active:
+        raise AuthError("user not found or disabled", 401)
+    user.token_version += 1
+    db.session.commit()
 
 
 def _generate_verification_code() -> str:

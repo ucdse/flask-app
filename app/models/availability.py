@@ -23,10 +23,10 @@ class Availability(db.Model):
     last_update: Mapped[int] = mapped_column(BigInteger)
 
     # [推荐] 再加一个转换后的 DateTime 字段，方便你写 SQL 查询 (例如查 "上周三下午的数据")
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now())
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # 数据请求的时间（抓取该条记录时的时间）
-    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(), comment="数据请求的时间")
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="数据请求的时间")
 
     # 反向关联
     station = relationship("Station", back_populates="availabilities")

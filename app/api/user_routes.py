@@ -16,6 +16,7 @@ from app.services.user_service import (
     activate_by_token,
     activate_user,
     login_user,
+    logout_user,
     refresh_tokens,
     register_user,
     send_verification_code,
@@ -119,13 +120,13 @@ def refresh():
 
 @user_bp.post("/logout")
 def logout():
-    """登出：需要携带有效 access_token（Authorization: Bearer <access_token>），服务端确认后返回成功。"""
+    """登出：需要携带有效 access_token，服务端将当前用户 token_version 递增并使旧 token 失效。"""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.strip().lower().startswith("bearer "):
         return jsonify({"code": 40101, "msg": "missing or invalid Authorization header", "data": None}), 401
     token = auth_header.strip()[7:].strip()
     try:
-        verify_access_token(token)
+        logout_user(token)
     except AuthError as exc:
         return jsonify({"code": 40101, "msg": exc.message, "data": None}), exc.status_code
     return jsonify({"code": 0, "msg": "logged out", "data": None}), 200

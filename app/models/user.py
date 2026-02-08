@@ -36,6 +36,8 @@ class User(db.Model):
     email_verification_code_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     # 激活链接用 Token：邮件中带 /activate/:token，点击即激活；与验证码同效、同过期
     activation_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    # 令牌版本号：logout 时递增，使旧 access/refresh token 立即失效
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # 创建时间：使用数据库层面的默认值 (server_default)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
