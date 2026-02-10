@@ -49,3 +49,9 @@ MAIL_DEFAULT_SENDER = (
 )
 # 前端激活页基础 URL，用于邮件中的「点击激活」链接：{FRONTEND_BASE_URL}/activate/{token}
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+
+# OpenWeatherMap API 配置（用于天气预报）
+OPENWEATHER_API_BASE_URL = os.environ.get("OPENWEATHER_API_BASE_URL", "https://api.openweathermap.org/data/3.0/onecall")
+OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY")
+if not OPENWEATHER_API_KEY:
+    raise ValueError("OPENWEATHER_API_KEY 环境变量未设置，请在 .env 文件中配置")
