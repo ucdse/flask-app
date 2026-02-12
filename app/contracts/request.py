@@ -92,7 +92,8 @@ class ActivateRequestDTO(BaseModel):
     @field_validator("code", mode="before")
     @classmethod
     def code_strip(cls, v: str) -> str:
-        return v.strip() if isinstance(v, str) else v
+        # 接受数值类型验证码，兼容之前 str(code).strip() 的行为
+        return str(v).strip()
 
     @field_validator("code")
     @classmethod
