@@ -61,11 +61,21 @@ class LoginRequestDTO(BaseModel):
     identifier: Annotated[str, Field(min_length=1, max_length=120)]
     password: Annotated[str, Field(min_length=1)]
 
+    @field_validator("identifier", mode="before")
+    @classmethod
+    def identifier_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
 
 class RefreshTokenRequestDTO(BaseModel):
     """刷新令牌请求体。"""
 
     refresh_token: Annotated[str, Field(min_length=1)]
+
+    @field_validator("refresh_token", mode="before")
+    @classmethod
+    def refresh_token_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 class ActivateRequestDTO(BaseModel):
@@ -74,12 +84,22 @@ class ActivateRequestDTO(BaseModel):
     identifier: Annotated[str, Field(min_length=1, max_length=120)]
     code: Annotated[str, Field(min_length=6, max_length=6)]
 
+    @field_validator("identifier", mode="before")
+    @classmethod
+    def identifier_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("code", mode="before")
+    @classmethod
+    def code_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
     @field_validator("code")
     @classmethod
     def code_six_digits(cls, v: str) -> str:
         if not v.isdigit():
             raise ValueError("code must be a 6-digit string.")
-        return v.strip()
+        return v
 
 
 class SendVerificationCodeRequestDTO(BaseModel):
@@ -87,11 +107,21 @@ class SendVerificationCodeRequestDTO(BaseModel):
 
     identifier: Annotated[str, Field(min_length=1, max_length=120)]
 
+    @field_validator("identifier", mode="before")
+    @classmethod
+    def identifier_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
 
 class ActivateByTokenRequestDTO(BaseModel):
     """通过邮件链接 Token 激活请求体。"""
 
     token: Annotated[str, Field(min_length=1)]
+
+    @field_validator("token", mode="before")
+    @classmethod
+    def token_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 # ----- Weather -----
