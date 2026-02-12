@@ -20,19 +20,29 @@ class UserRegistrationRequestDTO(BaseModel):
     password: Annotated[str, Field(min_length=8, max_length=128)]
     avatar_url: str | None = None
 
+    @field_validator("username", mode="before")
+    @classmethod
+    def username_strip(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
     @field_validator("username")
     @classmethod
     def username_pattern(cls, v: str) -> str:
         if not USERNAME_PATTERN.match(v):
             raise ValueError("username can only contain letters, numbers, '_', '-' and '.'.")
-        return v.strip()
+        return v
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def email_strip_lower(cls, v: str) -> str:
+        return v.strip().lower() if isinstance(v, str) else v
 
     @field_validator("email")
     @classmethod
     def email_format(cls, v: str) -> str:
         if not EMAIL_PATTERN.match(v):
             raise ValueError("email format is invalid.")
-        return v.strip().lower()
+        return v
 
     @field_validator("avatar_url")
     @classmethod
