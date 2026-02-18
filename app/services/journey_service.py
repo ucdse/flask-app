@@ -1,58 +1,126 @@
-from app.extensions import (db)
+import googlemaps
+
+from app.extensions import db
 from app.models import Station, Availability
-from app.services.station_service import list_stations
 from app.utils.calculateDistance import calculate_distance
+
+from config import GOOGLE_MAPS_API_KEY
+
+gmaps = None
+if GOOGLE_MAPS_API_KEY:
+    gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+
+
+def get_matrix_durations(origins, destinations, mode="walking"):
+    """
+    Helper: Gets a matrix of durations from Google Maps.
+    origins: list of (lat, lon) tuples
+    destinations: list of (lat, lon) tuples
+    Returns: A list of lists (matrix) where matrix[i][j] is duration in seconds.
+    """
+    if not gmaps:
+        return [[0] * len(destinations) for _ in range(len(origins))]  # Mock if no key
+
+    try:
+        # Google Distance Matrix accepts lists of coords
+        matrix = gmaps.distance_matrix(origins=origins, destinations=destinations, mode=mode)
+
+        results = []
+        if matrix['status'] == 'OK':
+            for row in matrix['rows']:
+                row_durations = []
+                for element in row['elements']:
+                    if element['status'] == 'OK':
+                        row_durations.append(element['duration']['value'])
+                    else:
+                        row_durations.append(float('inf'))  # Route impossible
+                results.append(row_durations)
+            return results
+    except Exception as e:
+        print(f"Matrix API Error: {e}")
+        return [[float('inf')] * len(destinations) for _ in range(len(origins))]
+
 
 def find_best_route(start_lat, start_lon, end_lat, end_lon):
     """
-    Finds the best start and end stations for a journey.
+    Finds the Global Minimum Duration: Min(Walk1 + Cycle + Walk2).
     """
-    # 1. Get all stations
-    # Ideally, we want the station AND its latest availability
     stations = db.session.query(Station).all()
 
-    best_start_station = None
-    min_start_dist = float('inf')  # Infinity
-
-    best_end_station = None
-    min_end_dist = float('inf')
+    # --- Step 1: Crude Filtering (Haversine) ---
+    # We still need this to narrow down 100+ stations to top 3
+    candidates_start = []
+    candidates_end = []
 
     for station in stations:
-        # Get latest availability for this station
-        # This is a simple way; for production, we would join tables to be faster
-        av = db.session.query(Availability) \
-            .filter(Availability.number == station.number) \
-            .order_by(Availability.last_update.desc()) \
-            .first()
+        av = db.session.query(Availability).filter_by(number=station.number).order_by(
+            Availability.last_update.desc()).first()
+        if not av: continue
 
-        if not av:
-            continue  # Skip broken stations
+        if av.available_bikes > 0:
+            dist = calculate_distance(start_lat, start_lon, station.latitude, station.longitude)
+            candidates_start.append((station, dist))
 
-        # --- Find Start Station (Needs Bikes) ---
-        dist_to_start = calculate_distance(start_lat, start_lon, station.latitude, station.longitude)
-        if av.available_bikes > 0 and dist_to_start < min_start_dist:
-            min_start_dist = dist_to_start
-            best_start_station = station
+        if av.available_bike_stands > 0:
+            dist = calculate_distance(end_lat, end_lon, station.latitude, station.longitude)
+            candidates_end.append((station, dist))
 
-        # --- Find End Station (Needs Parking) ---
-        dist_to_end = calculate_distance(end_lat, end_lon, station.latitude, station.longitude)
-        if av.available_bike_stands > 0 and dist_to_end < min_end_dist:
-            min_end_dist = dist_to_end
-            best_end_station = station
+    # Keep top 3 closest by Haversine
+    candidates_start.sort(key=lambda x: x[1])
+    candidates_end.sort(key=lambda x: x[1])
 
-    if not best_start_station or not best_end_station:
+    top_starts = [x[0] for x in candidates_start[:3]]  # Just the station objects
+    top_ends = [x[0] for x in candidates_end[:3]]
+
+    if not top_starts or not top_ends:
         return None
 
-    # Return a clean dictionary
-    return {
-        "start_station": {
-            "name": best_start_station.address,
-            "coords": {"lat": best_start_station.latitude, "lon": best_start_station.longitude},
-            "distance_km": round(min_start_dist, 2)
-        },
-        "end_station": {
-            "name": best_end_station.address,
-            "coords": {"lat": best_end_station.latitude, "lon": best_end_station.longitude},
-            "distance_km": round(min_end_dist, 2)
-        }
-    }
+    # --- Step 2: Get Precise Walking Times ---
+    # Batch Call 1: User -> All 3 Start Stations
+    start_coords = [(s.latitude, s.longitude) for s in top_starts]
+    walk_times_start = get_matrix_durations([(start_lat, start_lon)], start_coords, mode="walking")[0]
+
+    # Batch Call 2: All 3 End Stations -> User
+    end_coords = [(s.latitude, s.longitude) for s in top_ends]
+    walk_times_end = get_matrix_durations(end_coords, [(end_lat, end_lon)], mode="walking")
+    # Note: result is [[time_to_dest], [time_to_dest]...], we flatten it:
+    walk_times_end = [row[0] for row in walk_times_end]
+
+    # --- Step 3: Get Cycling Times (The 3x3 Grid) ---
+    # Batch Call 3: All Start Stations -> All End Stations
+    cycle_matrix = get_matrix_durations(start_coords, end_coords, mode="bicycling")
+
+    # --- Step 4: Find the Global Minimum ---
+    best_route = None
+    min_total_duration = float('inf')
+
+    # Iterate through all 9 combinations (3 starts * 3 ends)
+    for i, start_station in enumerate(top_starts):
+        for j, end_station in enumerate(top_ends):
+
+            t_walk1 = walk_times_start[i]
+            t_cycle = cycle_matrix[i][j]
+            t_walk2 = walk_times_end[j]
+
+            total_time = t_walk1 + t_cycle + t_walk2
+
+            if total_time < min_total_duration:
+                min_total_duration = total_time
+                best_route = {
+                    "start_station": {
+                        "name": start_station.address,
+                        "coords": {"lat": start_station.latitude, "lon": start_station.longitude},
+                        "walking_time": t_walk1
+                    },
+                    "end_station": {
+                        "name": end_station.address,
+                        "coords": {"lat": end_station.latitude, "lon": end_station.longitude},
+                        "walking_time": t_walk2
+                    },
+                    "cycling_route": {
+                        "cycling_time": t_cycle,
+                    },
+                    "total_duration": total_time
+                }
+
+    return best_route
