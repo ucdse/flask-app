@@ -76,8 +76,8 @@ def plan_journey():
     except Exception as e:
         return jsonify({"code": 500, "msg": f"Error processing request: {str(e)}", "data": None}), 500
 
-        # --- CORE LOGIC: Find the stations ---
-        # Now that we have lat/lon (from either path), we call your service
+    # --- CORE LOGIC: Find the stations ---
+     # Now that we have lat/lon (from either path), we call your service
     result = find_best_route(start_lat, start_lon, end_lat, end_lon)
 
     if not result:

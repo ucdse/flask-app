@@ -48,7 +48,7 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
     stations = db.session.query(Station).all()
 
     # --- Step 1: Crude Filtering (Haversine) ---
-    # We still need this to narrow down 100+ stations to top 3
+    # We still need this to narrow down 100+ stations to top 5
     candidates_start = []
     candidates_end = []
 
@@ -65,28 +65,28 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
             dist = calculate_distance(end_lat, end_lon, station.latitude, station.longitude)
             candidates_end.append((station, dist))
 
-    # Keep top 3 closest by Haversine
+    # Keep top 5 closest by Haversine
     candidates_start.sort(key=lambda x: x[1])
     candidates_end.sort(key=lambda x: x[1])
 
-    top_starts = [x[0] for x in candidates_start[:3]]  # Just the station objects
-    top_ends = [x[0] for x in candidates_end[:3]]
+    top_starts = [x[0] for x in candidates_start[:5]]  # Just the station objects
+    top_ends = [x[0] for x in candidates_end[:5]]
 
     if not top_starts or not top_ends:
         return None
 
     # --- Step 2: Get Precise Walking Times ---
-    # Batch Call 1: User -> All 3 Start Stations
+    # Batch Call 1: User -> All 5 Start Stations
     start_coords = [(s.latitude, s.longitude) for s in top_starts]
     walk_times_start = get_matrix_durations([(start_lat, start_lon)], start_coords, mode="walking")[0]
 
-    # Batch Call 2: All 3 End Stations -> User
+    # Batch Call 2: All 5 End Stations -> User
     end_coords = [(s.latitude, s.longitude) for s in top_ends]
     walk_times_end = get_matrix_durations(end_coords, [(end_lat, end_lon)], mode="walking")
     # Note: result is [[time_to_dest], [time_to_dest]...], we flatten it:
     walk_times_end = [row[0] for row in walk_times_end]
 
-    # --- Step 3: Get Cycling Times (The 3x3 Grid) ---
+    # --- Step 3: Get Cycling Times (The 5x5 Grid) ---
     # Batch Call 3: All Start Stations -> All End Stations
     cycle_matrix = get_matrix_durations(start_coords, end_coords, mode="bicycling")
 
@@ -94,7 +94,7 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
     best_route = None
     min_total_duration = float('inf')
 
-    # Iterate through all 9 combinations (3 starts * 3 ends)
+    # Iterate through all 25 combinations (5 starts * 5 ends)
     for i, start_station in enumerate(top_starts):
         for j, end_station in enumerate(top_ends):
 
@@ -108,11 +108,13 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
                 min_total_duration = total_time
                 best_route = {
                     "start_station": {
+                        "number": start_station.number,
                         "name": start_station.address,
                         "coords": {"lat": start_station.latitude, "lon": start_station.longitude},
                         "walking_time": t_walk1
                     },
                     "end_station": {
+                        "number": end_station.number,
                         "name": end_station.address,
                         "coords": {"lat": end_station.latitude, "lon": end_station.longitude},
                         "walking_time": t_walk2
