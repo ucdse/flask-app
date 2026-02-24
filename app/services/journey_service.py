@@ -115,13 +115,15 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
                 best_route = {
                     "start_station": {
                         "number": start_station.number,
-                        "name": start_station.address,
+                        "name": start_station.name,
+                        "address": start_station.address,
                         "coords": {"lat": start_station.latitude, "lon": start_station.longitude},
                         "walking_time": t_walk1
                     },
                     "end_station": {
                         "number": end_station.number,
-                        "name": end_station.address,
+                        "name": end_station.name,
+                        "address": end_station.address,
                         "coords": {"lat": end_station.latitude, "lon": end_station.longitude},
                         "walking_time": t_walk2
                     },

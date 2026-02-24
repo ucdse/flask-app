@@ -35,14 +35,15 @@ def plan_journey():
     if not payload:
         return jsonify({"code": 400, "msg": "Missing JSON body", "data": None}), 400
 
+    if not gmaps:
+        return jsonify({"code": 500, "msg": "Server Geocoding not configured", "data": None}), 500
+
     start_lat, start_lon = None, None
     end_lat, end_lon = None, None
 
     try:
         # --- PATH A: User provided text addresses (Requires Google Maps) ---
         if "start_address" in payload and "end_address" in payload:
-            if not gmaps:
-                return jsonify({"code": 500, "msg": "Server Geocoding not configured", "data": None}), 500
 
             # 1. Geocode Start Address
             start_result = gmaps.geocode(payload["start_address"])
