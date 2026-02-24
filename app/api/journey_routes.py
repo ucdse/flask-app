@@ -110,24 +110,26 @@ def plan_journey():
             return jsonify({"code": 400, "msg": "Please provide 'start_address'/'end_address' OR 'start'/'end' coords",
                             "data": None}), 400
 
-    except Exception as e:
-        return jsonify({"code": 500, "msg": f"Error processing request: {str(e)}", "data": None}), 500
+        # --- CORE LOGIC: Find the stations ---
+         # Now that we have lat/lon (from either path), we call your service
+        result = find_best_route(start_lat, start_lon, end_lat, end_lon)
 
-    # --- CORE LOGIC: Find the stations ---
-     # Now that we have lat/lon (from either path), we call your service
-    result = find_best_route(start_lat, start_lon, end_lat, end_lon)
+        if not result:
+            return jsonify({"code": 404, "msg": "No suitable stations found nearby", "data": None}), 404
 
-    if not result:
-        return jsonify({"code": 404, "msg": "No suitable stations found nearby", "data": None}), 404
-
-    # We add the resolved coordinates to the response so the frontend knows
-    # exactly where the Geocoder placed the pins.
-    response_data = {
-        "route_info": result,
-        "search_context": {
-            "start_resolved": {"lat": start_lat, "lon": start_lon},
-            "end_resolved": {"lat": end_lat, "lon": end_lon}
+        # We add the resolved coordinates to the response so the frontend knows
+        # exactly where the Geocoder placed the pins.
+        response_data = {
+            "route_info": result,
+            "search_context": {
+                "start_resolved": {"lat": start_lat, "lon": start_lon},
+                "end_resolved": {"lat": end_lat, "lon": end_lon}
+            }
         }
-    }
 
-    return jsonify({"code": 0, "msg": "ok", "data": response_data}), 200
+        return jsonify({"code": 0, "msg": "ok", "data": response_data}), 200
+
+    except Exception as e:
+            # This will now correctly catch the RuntimeError from find_best_route
+            # and return it as a structured JSON object.
+        return jsonify({"code": 500, "msg": f"Error processing request: {str(e)}", "data": None}), 500
