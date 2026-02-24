@@ -4,15 +4,22 @@ from flask import Blueprint, jsonify, request
 from app.services.journey_service import find_best_route
 
 from config import GOOGLE_MAPS_API_KEY
+from app.utils.api_retry import gmaps_retry
+import googlemaps.exceptions
 
 journey_bp = Blueprint("journey", __name__, url_prefix="/api/journey")
 
 # Initialise Client
 gmaps = None
 if GOOGLE_MAPS_API_KEY:
-    gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+    gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY, timeout=5, retry_timeout=10)
 else:
     print("WARNING: GOOGLE_MAPS_API_KEY not found in config.")
+
+@gmaps_retry(max_retries=2)
+def _safe_geocode(address):
+    """Internal helper to wrap geocode with retry logic"""
+    return gmaps.geocode(address)
 
 @journey_bp.post("/plan")
 def plan_journey():
@@ -45,23 +52,27 @@ def plan_journey():
         # --- PATH A: User provided text addresses (Requires Google Maps) ---
         if "start_address" in payload and "end_address" in payload:
 
-            # 1. Geocode Start Address
-            start_result = gmaps.geocode(payload["start_address"])
-            if not start_result:
-                return jsonify(
-                    {"code": 404, "msg": f"Could not find location: {payload['start_address']}", "data": None}), 404
+            try:
+                # 1. Geocode Start Address
+                start_result = _safe_geocode(payload["start_address"])
+                if not start_result:
+                    return jsonify(
+                        {"code": 404, "msg": f"Could not find location: {payload['start_address']}", "data": None}), 404
 
-            start_loc = start_result[0]['geometry']['location']
-            start_lat, start_lon = start_loc['lat'], start_loc['lng']
+                start_loc = start_result[0]['geometry']['location']
+                start_lat, start_lon = start_loc['lat'], start_loc['lng']
 
-            # 2. Geocode End Address
-            end_result = gmaps.geocode(payload["end_address"])
-            if not end_result:
-                return jsonify(
-                    {"code": 404, "msg": f"Could not find location: {payload['end_address']}", "data": None}), 404
+                # 2. Geocode End Address
+                end_result = _safe_geocode(payload["end_address"])
+                if not end_result:
+                    return jsonify(
+                        {"code": 404, "msg": f"Could not find location: {payload['end_address']}", "data": None}), 404
 
-            end_loc = end_result[0]['geometry']['location']
-            end_lat, end_lon = end_loc['lat'], end_loc['lng']
+                end_loc = end_result[0]['geometry']['location']
+                end_lat, end_lon = end_loc['lat'], end_loc['lng']
+            except googlemaps.exceptions.ApiError as e:
+                # Catch specific Google Maps API errors (e.g., OVER_QUERY_LIMIT, REQUEST_DENIED)
+                return jsonify({"code": 502, "msg": "Third-party map service error", "data": str(e)}), 502
 
         # --- PATH B: User provided raw coordinates (Legacy/Testing) ---
         elif "start" in payload and "end" in payload:

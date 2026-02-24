@@ -5,13 +5,17 @@ from app.extensions import db
 from app.models import Station, Availability
 from app.utils.calculateDistance import calculate_distance
 
+from app.utils.api_retry import gmaps_retry
+
 from config import GOOGLE_MAPS_API_KEY
 
 gmaps = None
 if GOOGLE_MAPS_API_KEY:
-    gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+    # Adding explicit timeout and retry_timeout for the Google Maps Client
+    gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY, timeout=5, retry_timeout=10)
 
 
+@gmaps_retry(max_retries=2)
 def get_matrix_durations(origins, destinations, mode="walking"):
     """
     Helper: Gets a matrix of durations from Google Maps.
@@ -52,19 +56,31 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
     """
     Finds the Global Minimum Duration: Min(Walk1 + Cycle + Walk2).
     """
-    stations = db.session.query(Station).all()
     now = datetime.now()
 
-    # --- Step 1: Crude Filtering (Haversine) ---
+    # --- Step 1: Pre-fetch Latest Availabilities (Fixing N+1 Query) ---
+    # Create a subquery that gets the latest timestamp for each station number
+    subq = db.session.query(
+        Availability.number,
+        db.func.max(Availability.timestamp).label('max_time')
+    ).group_by(Availability.number).subquery()
+
+    # Join Station and Availability, filtering by the subquery to only get the latest row per station
+    latest_station_data = db.session.query(Station, Availability).join(
+        Availability, Station.number == Availability.number
+    ).join(
+        subq,
+        db.and_(
+            Availability.number == subq.c.number,
+            Availability.timestamp == subq.c.max_time
+        )
+    ).all()
+
     # We broaden initial scope to 10 stations to handle geographical barriers (e.g. rivers)
     candidates_start = []
     candidates_end = []
 
-    for station in stations:
-        av = db.session.query(Availability).filter_by(number=station.number).order_by(
-            Availability.timestamp.desc()).first()
-        if not av: continue
-
+    for station, av in latest_station_data:
         # Explicitly gate candidates to operational statuses only
         if av.status != 'OPEN':
             continue
