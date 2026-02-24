@@ -130,7 +130,8 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
                     },
                     "total_duration": total_time
                 }
-            # Explicitly catch API failures before returning
-            if min_total_duration == float('inf'):
-                raise RuntimeError("Routing API unavailable due to upstream Distance Matrix failure.")
+
+    # Explicitly catch API failures before returning
+    if min_total_duration == float('inf'):
+        raise RuntimeError("Routing API unavailable due to upstream Distance Matrix failure.")
     return best_route

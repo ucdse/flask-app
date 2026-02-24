@@ -106,11 +106,6 @@ def plan_journey():
                     "data": None
                 }), 400
 
-            start_lat = payload["start"]["lat"]
-            start_lon = payload["start"]["lon"]
-            end_lat = payload["end"]["lat"]
-            end_lon = payload["end"]["lon"]
-
         else:
             return jsonify({"code": 400, "msg": "Please provide 'start_address'/'end_address' OR 'start'/'end' coords",
                             "data": None}), 400
