@@ -19,7 +19,8 @@ def get_matrix_durations(origins, destinations, mode="walking"):
     Returns: A list of lists (matrix) where matrix[i][j] is duration in seconds.
     """
     if not gmaps:
-        return [[0] * len(destinations) for _ in range(len(origins))]  # Mock if no key
+        # Return infinity so routes are marked impossible instead of 0 minutes
+        return [[float('inf')] * len(destinations) for _ in range(len(origins))]
 
     try:
         # Google Distance Matrix accepts lists of coords
@@ -36,6 +37,11 @@ def get_matrix_durations(origins, destinations, mode="walking"):
                         row_durations.append(float('inf'))  # Route impossible
                 results.append(row_durations)
             return results
+        else:
+            # Explicit fallback if top-level status is not OK (e.g., quota exceeded)
+            print(f"Matrix API returned non-OK status: {matrix.get('status')}")
+            return [[float('inf')] * len(destinations) for _ in range(len(origins))]
+
     except Exception as e:
         print(f"Matrix API Error: {e}")
         return [[float('inf')] * len(destinations) for _ in range(len(origins))]
