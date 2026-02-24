@@ -64,6 +64,18 @@ def plan_journey():
 
         # --- PATH B: User provided raw coordinates (Legacy/Testing) ---
         elif "start" in payload and "end" in payload:
+
+            start_node = payload["start"]
+            end_node = payload["end"]
+
+            # Explicitly validate that both 'lat' and 'lon' exist in the payload
+            if "lat" not in start_node or "lon" not in start_node or "lat" not in end_node or "lon" not in end_node:
+                return jsonify({
+                    "code": 400,
+                    "msg": "Bad Request: Both 'start' and 'end' must contain 'lat' and 'lon' keys.",
+                    "data": None
+                }), 400
+
             start_lat = payload["start"]["lat"]
             start_lon = payload["start"]["lon"]
             end_lat = payload["end"]["lat"]
