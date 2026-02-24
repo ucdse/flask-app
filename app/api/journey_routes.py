@@ -68,11 +68,41 @@ def plan_journey():
             start_node = payload["start"]
             end_node = payload["end"]
 
-            # Explicitly validate that both 'lat' and 'lon' exist in the payload
+            # 1. Type Validation: Ensure both nodes are actually dictionaries
+            if not isinstance(start_node, dict) or not isinstance(end_node, dict):
+                return jsonify({
+                    "code": 400,
+                    "msg": "Bad Request: 'start' and 'end' must be JSON objects containing coordinates.",
+                    "data": None
+                }), 400
+
+            # 2. Key Validation: Explicitly validate that both 'lat' and 'lon' exist
             if "lat" not in start_node or "lon" not in start_node or "lat" not in end_node or "lon" not in end_node:
                 return jsonify({
                     "code": 400,
                     "msg": "Bad Request: Both 'start' and 'end' must contain 'lat' and 'lon' keys.",
+                    "data": None
+                }), 400
+
+            # 3. Value Type Validation: Ensure the values can be converted to floats
+            try:
+                start_lat = float(start_node["lat"])
+                start_lon = float(start_node["lon"])
+                end_lat = float(end_node["lat"])
+                end_lon = float(end_node["lon"])
+            except (ValueError, TypeError):
+                return jsonify({
+                    "code": 400,
+                    "msg": "Bad Request: Coordinate values must be numbers.",
+                    "data": None
+                }), 400
+
+            # 4. Boundary Validation: Ensure coordinates are geographically valid
+            if not (-90 <= start_lat <= 90) or not (-180 <= start_lon <= 180) or \
+                    not (-90 <= end_lat <= 90) or not (-180 <= end_lon <= 180):
+                return jsonify({
+                    "code": 400,
+                    "msg": "Bad Request: Latitude must be between -90 and 90, and longitude between -180 and 180.",
                     "data": None
                 }), 400
 
