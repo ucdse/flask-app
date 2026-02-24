@@ -1,4 +1,5 @@
 import googlemaps
+from datetime import datetime, timedelta
 
 from app.extensions import db
 from app.models import Station, Availability
@@ -52,47 +53,74 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
     Finds the Global Minimum Duration: Min(Walk1 + Cycle + Walk2).
     """
     stations = db.session.query(Station).all()
+    now = datetime.now()
 
     # --- Step 1: Crude Filtering (Haversine) ---
-    # We still need this to narrow down 100+ stations to top 5
+    # We broaden initial scope to 10 stations to handle geographical barriers (e.g. rivers)
     candidates_start = []
     candidates_end = []
 
     for station in stations:
         av = db.session.query(Availability).filter_by(number=station.number).order_by(
-            Availability.last_update.desc()).first()
+            Availability.timestamp.desc()).first()
         if not av: continue
+
+        # Explicitly gate candidates to operational statuses only
+        if av.status != 'OPEN':
+            continue
+
+        # Exclude stale data (older than 30 minutes)
+        if (now - av.timestamp) > timedelta(minutes=30):
+            continue
 
         if av.available_bikes > 0:
             dist = calculate_distance(start_lat, start_lon, station.latitude, station.longitude)
-            candidates_start.append((station, dist))
+            candidates_start.append((station, dist, av.available_bikes))
 
         if av.available_bike_stands > 0:
             dist = calculate_distance(end_lat, end_lon, station.latitude, station.longitude)
-            candidates_end.append((station, dist))
+            candidates_end.append((station, dist, av.available_bike_stands))
 
-    # Keep top 5 closest by Haversine
+    # Keep top 10 closest geographically
     candidates_start.sort(key=lambda x: x[1])
     candidates_end.sort(key=lambda x: x[1])
 
-    top_starts = [x[0] for x in candidates_start[:5]]  # Just the station objects
-    top_ends = [x[0] for x in candidates_end[:5]]
+    top_starts_10 = candidates_start[:10]
+    top_ends_10 = candidates_end[:10]
 
-    if not top_starts or not top_ends:
+    if not top_starts_10 or not top_ends_10:
         return None
 
     # --- Step 2: Get Precise Walking Times ---
-    # Batch Call 1: User -> All 5 Start Stations
-    start_coords = [(s.latitude, s.longitude) for s in top_starts]
-    walk_times_start = get_matrix_durations([(start_lat, start_lon)], start_coords, mode="walking")[0]
+    # Batch Call 1: User -> All 10 Start Stations
+    start_coords_10 = [(s.latitude, s.longitude) for s, _, _ in top_starts_10]
+    walk_times_start_10 = get_matrix_durations([(start_lat, start_lon)], start_coords_10, mode="walking")[0]
 
-    # Batch Call 2: All 5 End Stations -> User
-    end_coords = [(s.latitude, s.longitude) for s in top_ends]
-    walk_times_end = get_matrix_durations(end_coords, [(end_lat, end_lon)], mode="walking")
-    # Note: result is [[time_to_dest], [time_to_dest]...], we flatten it:
-    walk_times_end = [row[0] for row in walk_times_end]
+    # Zip, sort by actual walking time, and keep top 5
+    start_with_times = list(zip(top_starts_10, walk_times_start_10))
+    start_with_times.sort(key=lambda x: x[1])
+    best_5_starts = start_with_times[:5]
+
+    top_starts = [x[0] for x in best_5_starts]  # list of (station, dist, available)
+    walk_times_start = [x[1] for x in best_5_starts]
+
+    # Batch Call 2: All 10 End Stations -> User
+    end_coords_10 = [(s.latitude, s.longitude) for s, _, _ in top_ends_10]
+    walk_times_end_10 = get_matrix_durations(end_coords_10, [(end_lat, end_lon)], mode="walking")
+    walk_times_end_10 = [row[0] for row in walk_times_end_10]
+
+    # Zip, sort by actual walking time, and keep top 5
+    end_with_times = list(zip(top_ends_10, walk_times_end_10))
+    end_with_times.sort(key=lambda x: x[1])
+    best_5_ends = end_with_times[:5]
+
+    top_ends = [x[0] for x in best_5_ends] # list of (station, dist, available)
+    walk_times_end = [x[1] for x in best_5_ends]
 
     # --- Step 3: Get Cycling Times (The 5x5 Grid) ---
+    start_coords = [(s[0].latitude, s[0].longitude) for s in top_starts]
+    end_coords = [(s[0].latitude, s[0].longitude) for s in top_ends]
+    
     # Batch Call 3: All Start Stations -> All End Stations
     cycle_matrix = get_matrix_durations(start_coords, end_coords, mode="bicycling")
 
@@ -101,8 +129,17 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
     min_total_duration = float('inf')
 
     # Iterate through all 25 combinations (5 starts * 5 ends)
-    for i, start_station in enumerate(top_starts):
-        for j, end_station in enumerate(top_ends):
+    for i, start_data in enumerate(top_starts):
+        start_station = start_data[0]
+        start_available_bikes = start_data[2]
+        
+        for j, end_data in enumerate(top_ends):
+            end_station = end_data[0]
+            end_available_stands = end_data[2]
+            
+            # Exclude same station for pickup and drop-off
+            if start_station.number == end_station.number:
+                continue
 
             t_walk1 = walk_times_start[i]
             t_cycle = cycle_matrix[i][j]
@@ -118,14 +155,16 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
                         "name": start_station.name,
                         "address": start_station.address,
                         "coords": {"lat": start_station.latitude, "lon": start_station.longitude},
-                        "walking_time": t_walk1
+                        "walking_time": t_walk1,
+                        "available_bikes": start_available_bikes
                     },
                     "end_station": {
                         "number": end_station.number,
                         "name": end_station.name,
                         "address": end_station.address,
                         "coords": {"lat": end_station.latitude, "lon": end_station.longitude},
-                        "walking_time": t_walk2
+                        "walking_time": t_walk2,
+                        "available_bike_stands": end_available_stands
                     },
                     "cycling_route": {
                         "cycling_time": t_cycle,
