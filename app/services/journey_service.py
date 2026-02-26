@@ -44,8 +44,10 @@ def get_matrix_durations(origins, destinations, mode="walking"):
             return results
         else:
             # Explicit fallback if top-level status is not OK (e.g., quota exceeded)
-            print(f"Matrix API returned non-OK status: {matrix.get('status')}")
-            return [[float('inf')] * len(destinations) for _ in range(len(origins))]
+            status = matrix.get('status')
+            error_message = matrix.get('error_message', 'No error message provided')
+            print(f"Matrix API returned non-OK status: {status} - {error_message}")
+            raise googlemaps.exceptions.ApiError(status, error_message)
 
     except Exception as e:
         print(f"Matrix API Error: {e}")

@@ -52,31 +52,23 @@ def plan_journey():
         # --- PATH A: User provided text addresses (Requires Google Maps) ---
         if "start_address" in payload and "end_address" in payload:
 
-            try:
-                # 1. Geocode Start Address
-                start_result = _safe_geocode(payload["start_address"])
-                if not start_result:
-                    return jsonify(
-                        {"code": 404, "msg": f"Could not find location: {payload['start_address']}", "data": None}), 404
+            # 1. Geocode Start Address
+            start_result = _safe_geocode(payload["start_address"])
+            if not start_result:
+                return jsonify(
+                    {"code": 404, "msg": f"Could not find location: {payload['start_address']}", "data": None}), 404
 
-                start_loc = start_result[0]['geometry']['location']
-                start_lat, start_lon = start_loc['lat'], start_loc['lng']
+            start_loc = start_result[0]['geometry']['location']
+            start_lat, start_lon = start_loc['lat'], start_loc['lng']
 
-                # 2. Geocode End Address
-                end_result = _safe_geocode(payload["end_address"])
-                if not end_result:
-                    return jsonify(
-                        {"code": 404, "msg": f"Could not find location: {payload['end_address']}", "data": None}), 404
+            # 2. Geocode End Address
+            end_result = _safe_geocode(payload["end_address"])
+            if not end_result:
+                return jsonify(
+                    {"code": 404, "msg": f"Could not find location: {payload['end_address']}", "data": None}), 404
 
-                end_loc = end_result[0]['geometry']['location']
-                end_lat, end_lon = end_loc['lat'], end_loc['lng']
-            except googlemaps.exceptions.ApiError as e:
-                # Catch specific Google Maps API errors (e.g., OVER_QUERY_LIMIT, REQUEST_DENIED)
-                return jsonify({"code": 502, "msg": "Third-party map service error", "data": str(e)}), 502
-            except googlemaps.exceptions.TransportError as e:
-                return jsonify({"code": 502, "msg": "Failed to connect to third-party map service", "data": str(e)}), 502
-            except googlemaps.exceptions.Timeout as e:
-                return jsonify({"code": 504, "msg": "Third-party map service timed out", "data": str(e)}), 504
+            end_loc = end_result[0]['geometry']['location']
+            end_lat, end_lon = end_loc['lat'], end_loc['lng']
         # --- PATH B: User provided raw coordinates (Legacy/Testing) ---
         elif "start" in payload and "end" in payload:
 
@@ -144,6 +136,13 @@ def plan_journey():
 
         return jsonify({"code": 0, "msg": "ok", "data": response_data}), 200
 
+    except googlemaps.exceptions.ApiError as e:
+        # Catch specific Google Maps API errors (e.g., OVER_QUERY_LIMIT, REQUEST_DENIED)
+        return jsonify({"code": 502, "msg": "Third-party map service error", "data": str(e)}), 502
+    except googlemaps.exceptions.TransportError as e:
+        return jsonify({"code": 502, "msg": "Failed to connect to third-party map service", "data": str(e)}), 502
+    except googlemaps.exceptions.Timeout as e:
+        return jsonify({"code": 504, "msg": "Third-party map service timed out", "data": str(e)}), 504
     except Exception as e:
         # Log the actual error internally so debugging is still possible
         print(f"Internal Server Error in /plan: {str(e)}")
