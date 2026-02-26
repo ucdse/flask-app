@@ -73,7 +73,10 @@ def plan_journey():
             except googlemaps.exceptions.ApiError as e:
                 # Catch specific Google Maps API errors (e.g., OVER_QUERY_LIMIT, REQUEST_DENIED)
                 return jsonify({"code": 502, "msg": "Third-party map service error", "data": str(e)}), 502
-
+            except googlemaps.exceptions.TransportError as e:
+                return jsonify({"code": 502, "msg": "Failed to connect to third-party map service", "data": str(e)}), 502
+            except googlemaps.exceptions.Timeout as e:
+                return jsonify({"code": 504, "msg": "Third-party map service timed out", "data": str(e)}), 504
         # --- PATH B: User provided raw coordinates (Legacy/Testing) ---
         elif "start" in payload and "end" in payload:
 
@@ -142,6 +145,7 @@ def plan_journey():
         return jsonify({"code": 0, "msg": "ok", "data": response_data}), 200
 
     except Exception as e:
-            # This will now correctly catch the RuntimeError from find_best_route
-            # and return it as a structured JSON object.
-        return jsonify({"code": 500, "msg": f"Error processing request: {str(e)}", "data": None}), 500
+        # Log the actual error internally so debugging is still possible
+        print(f"Internal Server Error in /plan: {str(e)}")
+        # Return a sanitized error to the client to prevent information leakage
+        return jsonify({"code": 500, "msg": "An unexpected internal server error occurred.", "data": None}), 500

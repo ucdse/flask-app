@@ -49,8 +49,8 @@ def get_matrix_durations(origins, destinations, mode="walking"):
 
     except Exception as e:
         print(f"Matrix API Error: {e}")
-        return [[float('inf')] * len(destinations) for _ in range(len(origins))]
-
+        # Explicitly raise a maps error instead of swallowing it
+        raise googlemaps.exceptions.ApiError(f"Matrix API Error: {e}")
 
 def find_best_route(start_lat, start_lon, end_lat, end_lon):
     """
@@ -188,7 +188,8 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
                     "total_duration": total_time
                 }
 
-    # Explicitly catch API failures before returning
+    # If no valid route could be constructed (due to geographical barriers)
     if min_total_duration == float('inf'):
-        raise RuntimeError("Routing API unavailable due to upstream Distance Matrix failure.")
+        return None
+    
     return best_route
