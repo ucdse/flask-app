@@ -16,6 +16,9 @@ def calculate_distance(lat1, lon1, lat2, lon2):
          math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
          math.sin(dlon / 2) * math.sin(dlon / 2))
 
+    # Prevent math domain errors from floating-point imprecision when coordinates are identical
+    a = min(1.0, max(0.0, a))
+
     #  The angle (in radians) separating the two points at the Earth's center
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 

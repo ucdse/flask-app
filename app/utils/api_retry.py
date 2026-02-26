@@ -20,6 +20,5 @@ def gmaps_retry(max_retries=2, backoff_factor=1.5):
                     print(f"[gmaps_retry] Google Maps API Error: {e}. Retrying {attempt+1}/{max_retries} in {delay}s...")
                     time.sleep(delay)
                     delay *= backoff_factor
-            return func(*args, **kwargs)
         return wrapper
     return decorator
