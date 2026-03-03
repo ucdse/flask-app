@@ -55,3 +55,6 @@ OPENWEATHER_API_BASE_URL = os.environ.get("OPENWEATHER_API_BASE_URL", "https://a
 OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY")
 if not OPENWEATHER_API_KEY:
     raise ValueError("OPENWEATHER_API_KEY 环境变量未设置，请在 .env 文件中配置")
+
+# Google Maps API 配置 (用于路径规划)
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
