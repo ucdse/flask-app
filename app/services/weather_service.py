@@ -1,6 +1,6 @@
 """天气预报服务，从数据库获取天气数据。"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from app.models.weather import WeatherForecast
@@ -29,14 +29,14 @@ def get_weather() -> dict[str, Any]:
         ).order_by(WeatherForecast.forecast_time.asc()).limit(6).all()
         
         if not forecasts:
-            return {"current": {}, "hourly": []}
+            raise WeatherAPIError("No weather data available in database", 404)
             
         current = forecasts[0]
         
         # 组装为前端期望的格式 (模拟 OneCall API)
         return {
             "current": {
-                "dt": int(current.forecast_time.timestamp()),
+                "dt": int(current.forecast_time.replace(tzinfo=timezone.utc).timestamp()),
                 "temp": current.temperature,
                 "feels_like": current.feels_like,
                 "pressure": current.pressure,
@@ -56,7 +56,7 @@ def get_weather() -> dict[str, Any]:
             },
             "hourly": [
                 {
-                    "dt": int(f.forecast_time.timestamp()),
+                    "dt": int(f.forecast_time.replace(tzinfo=timezone.utc).timestamp()),
                     "temp": f.temperature,
                     "feels_like": f.feels_like,
                     "pressure": f.pressure,
