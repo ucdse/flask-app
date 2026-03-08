@@ -76,5 +76,10 @@ def chat_stream_api():
 
     return Response(
         stream_with_context(generate_chat_stream(secure_session_id, message)),
-        mimetype='text/event-stream'
+        mimetype='text/event-stream',
+        headers={
+            'X-Accel-Buffering': 'no',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        }
     )
