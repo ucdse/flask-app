@@ -1,6 +1,7 @@
 from flask import Flask
 
 from config import (
+    ALIYUN_API_KEY,
     MAIL_DEFAULT_SENDER,
     MAIL_PASSWORD,
     MAIL_PORT,
@@ -31,6 +32,9 @@ def create_app() -> Flask:
     app.config["MAIL_USERNAME"] = MAIL_USERNAME
     app.config["MAIL_PASSWORD"] = MAIL_PASSWORD
     app.config["MAIL_DEFAULT_SENDER"] = MAIL_DEFAULT_SENDER
+
+    # 阿里云 Qwen（聊天）
+    app.config["ALIYUN_API_KEY"] = ALIYUN_API_KEY
 
     db.init_app(app)
     mail.init_app(app)
