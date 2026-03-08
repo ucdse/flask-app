@@ -116,3 +116,5 @@ Thumbs.db
 
 # Local configuration
 config.local.py
+docs
+.scannerwork
