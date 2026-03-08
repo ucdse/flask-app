@@ -34,15 +34,15 @@ def chat():
     if err is not None:
         return err[0], err[1]
 
-    data = request.json
-    if not data:
-        return jsonify({"error": "Request body must be JSON"}), 400
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
 
     message = data.get("message")
     chat_id = data.get("chat_id") or "default"
 
-    if not message:
-        return jsonify({"error": "Missing 'message'"}), 400
+    if not message or not isinstance(message, str):
+        return jsonify({"error": "message field is required"}), 400
 
     user_id = payload["sub"]
     secure_session_id = _build_secure_session_id(user_id, chat_id)
@@ -61,15 +61,15 @@ def chat_stream_api():
     if err is not None:
         return err[0], err[1]
 
-    data = request.json
-    if not data:
-        return jsonify({"error": "Request body must be JSON"}), 400
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
 
     message = data.get("message")
     chat_id = data.get("chat_id") or "default"
 
-    if not message:
-        return jsonify({"error": "Missing 'message'"}), 400
+    if not message or not isinstance(message, str):
+        return jsonify({"error": "message field is required"}), 400
 
     user_id = payload["sub"]
     secure_session_id = _build_secure_session_id(user_id, chat_id)
