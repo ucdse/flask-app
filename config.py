@@ -58,3 +58,6 @@ if not OPENWEATHER_API_KEY:
 
 # Google Maps API 配置 (用于路径规划)
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+
+# 阿里云 Qwen 配置（用于大模型等）
+ALIYUN_API_KEY = os.environ.get("ALIYUN_API_KEY")
