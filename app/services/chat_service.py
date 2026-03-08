@@ -1,4 +1,6 @@
 # app/services/chat_service.py
+import json
+
 from flask import current_app
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -73,10 +75,10 @@ def generate_chat_stream(session_id: str, user_message: str):
         history_messages_key="chat_history"
     )
 
-    # 使用 .stream()，并通过 yield 把每个字推出去
+    # 使用 .stream()，JSON 编码后输出，避免 chunk 内换行符破坏 SSE 格式
     for chunk in chain_with_history.stream(
         {"user_input": user_message},
         config={"configurable": {"session_id": session_id}}
     ):
         if chunk.content:
-            yield f"data: {chunk.content}\n\n"
+            yield f"data: {json.dumps({'content': chunk.content}, ensure_ascii=False)}\n\n"
