@@ -2,6 +2,8 @@
 import json
 
 from flask import current_app
+
+from app.extensions import db
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import SQLChatMessageHistory
@@ -9,11 +11,11 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 
 def get_chat_history(session_id: str):
-    """动态获取对应 session_id 的数据库记忆对象"""
+    """动态获取对应 session_id 的数据库记忆对象，复用 Flask-SQLAlchemy 的 engine，避免每次请求重建连接池。"""
     return SQLChatMessageHistory(
         session_id=session_id,
-        connection_string=current_app.config['SQLALCHEMY_DATABASE_URI'],
-        table_name='message_store'  # 使用我们刚才建好的表
+        connection=db.engine,
+        table_name='message_store'
     )
 
 
