@@ -1,9 +1,12 @@
 # app/api/chat_routes.py
+import logging
+
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 
 from app.services.chat_service import generate_chat_response, generate_chat_stream
 from app.services.user_service import AuthError, verify_access_token
 
+logger = logging.getLogger(__name__)
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 
 
@@ -47,8 +50,9 @@ def chat():
     try:
         reply = generate_chat_response(secure_session_id, message)
         return jsonify({"chat_id": chat_id, "reply": reply})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        logger.exception("Chat request failed")
+        return jsonify({"error": "服务暂时不可用，请稍后重试"}), 500
 
 
 @chat_bp.route('/stream', methods=['POST'])
