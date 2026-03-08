@@ -48,3 +48,35 @@ def generate_chat_response(session_id: str, user_message: str) -> str:
     )
 
     return response.content
+
+
+def generate_chat_stream(session_id: str, user_message: str):
+    """流式处理核心对话逻辑 (Generator)"""
+
+    llm = ChatOpenAI(
+        api_key=current_app.config['ALIYUN_API_KEY'],
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model="qwen-plus"
+    )
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "你是一个得力的智能助手，请根据上下文回答问题。"),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{user_input}")
+    ])
+
+    chain = prompt | llm
+    chain_with_history = RunnableWithMessageHistory(
+        chain,
+        get_chat_history,
+        input_messages_key="user_input",
+        history_messages_key="chat_history"
+    )
+
+    # 使用 .stream()，并通过 yield 把每个字推出去
+    for chunk in chain_with_history.stream(
+        {"user_input": user_message},
+        config={"configurable": {"session_id": session_id}}
+    ):
+        if chunk.content:
+            yield f"data: {chunk.content}\n\n"
