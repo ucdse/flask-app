@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.extensions import db
 
@@ -23,10 +23,13 @@ class Session(db.Model):
     # AI 生成的标题，最长 100 字符
     title = db.Column(db.String(100), nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    @staticmethod
+    def utcnow() -> datetime:
+        """返回 timezone-aware 的 UTC 时间，避免 datetime.utcnow 的弃用警告。"""
+        return datetime.now(timezone.utc)
+
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     def __repr__(self) -> str:
         return f"<Session {self.id} user={self.user_id}>"

@@ -1,15 +1,17 @@
-from datetime import datetime
+import hashlib
 import json
 import logging
+import re
 
 from flask import current_app
-
-from app.extensions import db
-from app.models import ChatHistory, Session
+from sqlalchemy.exc import IntegrityError
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
+
+from app.extensions import db
+from app.models import ChatHistory, Session
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +36,40 @@ def _ensure_session(session_id: str, user_id: int) -> Session:
         session = Session(id=session_id, user_id=user_id)
         db.session.add(session)
     # 显式刷新最近更新时间，便于按 updated_at 排序
-    session.updated_at = datetime.utcnow()
-    db.session.commit()
+    session.updated_at = Session.utcnow()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # 并发创建同一 session 时，回退并复用已落库的记录，避免把首条消息打成 500。
+        db.session.rollback()
+        session = db.session.get(Session, session_id)
+        if session is None or session.user_id != user_id:
+            raise
+        session.updated_at = Session.utcnow()
+        db.session.commit()
     return session
+
+
+def generate_session_id(user_id: int, chat_id: str) -> str:
+    """
+    根据前端提供的 chat_id 生成真正用于存储的 session_id。
+
+    当前设计下，前端只维护 chat_id，后端总是根据 user_id + chat_id 计算唯一的 session_id，
+    不再尝试把 chat_id 当成已有会话主键进行复用。
+    """
+    if not isinstance(chat_id, str):
+        chat_id = str(chat_id)
+
+    prefix = f"user_{user_id}_chat_"
+    candidate = f"{prefix}{chat_id}"
+    if (
+        len(candidate) <= 64
+        and re.fullmatch(r"[A-Za-z0-9_.-]+", chat_id) is not None
+    ):
+        return candidate
+
+    digest = hashlib.sha256(chat_id.encode("utf-8")).hexdigest()[:32]
+    return f"{prefix}h_{digest}"
 
 
 def _generate_title(session_id: str, first_message: str) -> None:
@@ -56,22 +89,23 @@ def _generate_title(session_id: str, first_message: str) -> None:
         session = db.session.get(Session, session_id)
         if session and not session.title:
             session.title = title
-            session.updated_at = datetime.utcnow()
+            session.updated_at = Session.utcnow()
             db.session.commit()
     except Exception:
         logger.exception("Title generation failed")
 
 
-def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]]:
+def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]] | None:
     """
     获取指定会话的历史消息列表（仅限当前用户的会话）。
-    返回格式为按时间顺序排列的 [{role, content}, ...]。
+    - 会话不存在或不属于当前用户时返回 None
+    - 会话存在但暂无消息时返回 []
+    - 正常情况返回按时间顺序排列的 [{role, content}, ...]
     """
     # 先确认会话归属，避免越权访问
     session = db.session.get(Session, session_id)
     if session is None or session.user_id != user_id:
-        # 统一返回空列表，具体 HTTP 状态码由路由层决定
-        return []
+        return None
 
     rows = (
         db.session.query(ChatHistory)
