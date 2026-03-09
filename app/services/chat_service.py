@@ -5,7 +5,7 @@ import logging
 from flask import current_app
 
 from app.extensions import db
-from app.models import Session
+from app.models import ChatHistory, Session
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -60,6 +60,53 @@ def _generate_title(session_id: str, first_message: str) -> None:
             db.session.commit()
     except Exception:
         logger.exception("Title generation failed")
+
+
+def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]]:
+    """
+    获取指定会话的历史消息列表（仅限当前用户的会话）。
+    返回格式为按时间顺序排列的 [{role, content}, ...]。
+    """
+    # 先确认会话归属，避免越权访问
+    session = db.session.get(Session, session_id)
+    if session is None or session.user_id != user_id:
+        # 统一返回空列表，具体 HTTP 状态码由路由层决定
+        return []
+
+    rows = (
+        db.session.query(ChatHistory)
+        .filter_by(session_id=session_id)
+        .order_by(ChatHistory.id.asc())
+        .all()
+    )
+
+    def _map_role(message: dict) -> str:
+        msg_type = (message or {}).get("type")
+        if msg_type == "human":
+            return "user"
+        if msg_type == "ai":
+            return "assistant"
+        # 兼容 system / tool 等其他类型
+        if msg_type in {"system", "tool"}:
+            return msg_type
+        return msg_type or "assistant"
+
+    history: list[dict[str, str]] = []
+    for row in rows:
+        msg = row.message or {}
+        data = msg.get("data") or {}
+        content = data.get("content") or ""
+        if not isinstance(content, str):
+            # LangChain 规范中 content 应该是字符串，异常情况做一次 string 化
+            content = str(content)
+        history.append(
+            {
+                "role": _map_role(msg),
+                "content": content,
+            }
+        )
+
+    return history
 
 
 def generate_chat_response(session_id: str, user_message: str, user_id: int) -> str:

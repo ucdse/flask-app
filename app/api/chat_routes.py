@@ -5,7 +5,11 @@ from flask import Blueprint, request, jsonify, Response, stream_with_context
 
 from app.extensions import db
 from app.models import Session
-from app.services.chat_service import generate_chat_response, generate_chat_stream
+from app.services.chat_service import (
+    generate_chat_response,
+    generate_chat_stream,
+    get_session_messages,
+)
 from app.services.user_service import AuthError, verify_access_token
 
 logger = logging.getLogger(__name__)
@@ -115,4 +119,42 @@ def list_sessions():
             }
             for s in sessions
         ]
+    )
+
+
+@chat_bp.route("/sessions/<string:session_id>/messages", methods=["GET"])
+def get_session_history(session_id: str):
+    """
+    获取指定 session 的历史对话记录。
+    需要携带 Authorization: Bearer <access_token>，并且只能访问自己的会话。
+    """
+    payload, err = _require_auth()
+    if err is not None:
+        return err[0], err[1]
+
+    user_id = payload["sub"]
+
+    messages = get_session_messages(session_id, user_id)
+    if not messages:
+        # 会话不存在或不属于当前用户
+        return (
+            jsonify(
+                {
+                    "code": 404,
+                    "msg": "session not found",
+                    "data": None,
+                }
+            ),
+            404,
+        )
+
+    return jsonify(
+        {
+            "code": 0,
+            "msg": "ok",
+            "data": {
+                "session_id": session_id,
+                "messages": messages,
+            },
+        }
     )
