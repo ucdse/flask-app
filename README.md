@@ -103,10 +103,10 @@ python run.py
 
 默认监听 `http://127.0.0.1:5000`。
 
-**生产方式**（本地用 Gunicorn 多进程）：
+**生产方式**（本地用 Gunicorn 多进程 + 多线程，适合 SSE 流式输出与高并发）：
 
 ```bash
-gunicorn -w 4 -b 127.0.0.1:5000 wsgi:app
+gunicorn -w 4 -b 127.0.0.1:5000 --worker-class gthread --threads 4 --timeout 120 wsgi:app
 ```
 
 ### 本地运行常见问题
