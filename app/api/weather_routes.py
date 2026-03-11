@@ -24,30 +24,13 @@ def _validation_error_message(exc: ValidationError) -> str:
 @weather_bp.get("")
 def get_weather_forecast():
     """
-    获取天气预报。
-
-    查询参数:
-        lat (float): 纬度，必填
-        lon (float): 经度，必填
+    获取天气预报 (统一预报)。
 
     返回:
         JSON响应，包含天气预报数据
     """
-    raw = {
-        "lat": request.args.get("lat"),
-        "lon": request.args.get("lon"),
-    }
     try:
-        dto = WeatherQueryDTO.model_validate(raw)
-    except ValidationError as exc:
-        return jsonify({
-            "code": 40001,
-            "msg": _validation_error_message(exc),
-            "data": None
-        }), 400
-
-    try:
-        raw_data = get_weather(dto.lat, dto.lon)
+        raw_data = get_weather()
         data = WeatherDataVO.model_validate(raw_data).model_dump()
         return jsonify({"code": 0, "msg": "ok", "data": data}), 200
     except WeatherAPIError as exc:
