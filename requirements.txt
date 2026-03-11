@@ -11,3 +11,8 @@ gunicorn>=21.0.0
 requests>=2.31.0
 pydantic>=2.0.0
 googlemaps>=4.10.0
+
+# LangChain（聊天 / 阿里云 Qwen）
+langchain-openai>=0.2.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
