@@ -4,6 +4,8 @@ from typing import Any
 from app.extensions import db
 from app.models import Availability, Station
 
+from sqlalchemy import func
+
 
 class StationNotFoundError(Exception):
     def __init__(self, message: str = "station not found") -> None:
@@ -55,4 +57,16 @@ def get_recent_station_availability(number: int, lookback: timedelta = timedelta
         .order_by(Availability.requested_at.asc())
     )
     rows = db.session.execute(stmt).scalars().all()
+    return [_availability_to_dict(availability) for availability in rows]
+
+
+def get_all_stations_latest_availability() -> list[dict[str, Any]]:
+    # 1. 找出每個站點最新的 Availability ID
+    subquery = db.select(func.max(Availability.id)).group_by(Availability.number)
+    
+    # 2. 根據這些最新的 ID 撈出完整的紀錄
+    stmt = db.select(Availability).where(Availability.id.in_(subquery))
+    rows = db.session.execute(stmt).scalars().all()
+    
+    # 3. 沿用團隊原本的轉換函數，保持回傳格式完全一致
     return [_availability_to_dict(availability) for availability in rows]
