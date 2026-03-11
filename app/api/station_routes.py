@@ -5,6 +5,7 @@ from app.services.station_service import (
     StationNotFoundError,
     get_recent_station_availability,
     list_stations as list_stations_service,
+    get_all_stations_latest_availability
 )
 
 station_bp = Blueprint("station", __name__, url_prefix="/api/stations")
@@ -25,5 +26,13 @@ def get_station_availability(number: int):
         raw_list = get_recent_station_availability(number)
     except StationNotFoundError as exc:
         return jsonify({"code": 1, "msg": exc.message, "data": None}), 404
+    data = [AvailabilityVO.model_validate(a).model_dump() for a in raw_list]
+    return jsonify({"code": 0, "msg": "ok", "data": data}), 200
+
+@station_bp.get("/status")
+def get_all_stations_status():
+    """返回所有站點的最新即時狀態"""
+    raw_list = get_all_stations_latest_availability()
+    
     data = [AvailabilityVO.model_validate(a).model_dump() for a in raw_list]
     return jsonify({"code": 0, "msg": "ok", "data": data}), 200
