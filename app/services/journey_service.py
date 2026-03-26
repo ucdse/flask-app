@@ -59,12 +59,16 @@ def find_best_route(start_lat, start_lon, end_lat, end_lon):
     Finds the Global Minimum Duration: Min(Walk1 + Cycle + Walk2).
     """
     now = datetime.now()
+    one_hour_ago = now - timedelta(hours=1)
 
     # --- Step 1: Pre-fetch Latest Availabilities (Fixing N+1 Query) ---
-    # Create a subquery that gets the latest timestamp for each station number
+    # Create a subquery that gets the latest timestamp for each station number from the last hour
+    # to avoid a full table scan on the historical availability table.
     subq = db.session.query(
         Availability.number,
         db.func.max(Availability.timestamp).label('max_time')
+    ).filter(
+        Availability.timestamp >= one_hour_ago
     ).group_by(Availability.number).subquery()
 
     # Join Station and Availability, filtering by the subquery to only get the latest row per station
