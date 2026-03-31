@@ -1,65 +1,88 @@
----
-license: mit
----
-## `.pkl` 文件是什么？
+# Machine Learning Notebook
 
-PKL = Pickle，是 Python 的一种序列化格式。
+这个目录包含用于预测 Dublin Bikes 站点可用单车数量的训练 notebook：
 
-简单理解：就是把一个 Python 对象（比如训练好的模型）**"冷冻"保存**到硬盘上，
-需要的时候再**"解冻"**加载回来，完全不需要重新训练。
+- Notebook: `ml.ipynb`
+- 在线模型地址: <https://huggingface.co/ucdse/bike_availability_model/tree/main>
 
----
+## Notebook 作用
 
-## 两个文件分别存了什么？
+`ml.ipynb` 用于完成一个完整的机器学习训练流程，主要包括：
 
-### `bike_availability_model.pkl`
+- 读取并检查训练数据 `final_merged_data.csv`
+- 做基础 EDA，包括缺失值和目标变量分布查看
+- 选择有效特征并构造衍生特征
+- 训练并比较多个回归模型
+- 保存表现最好的模型和对应特征列表
 
-- 存储了训练好的 Random Forest 模型
-- 包含所有学习到的决策树、权重等信息
-- 加载后可以直接调用 `.predict()` 进行预测
+Notebook 中对比的模型包括：
 
-### `model_features.pkl`
+- Linear Regression
+- Decision Tree Regressor
+- Random Forest Regressor
+- Gradient Boosting Regressor
 
-- 存储了特征列表：`['station_id', 'capacity', 'lat', 'lon', 'hour', 'day', 'day_of_week', 'is_weekend', 'avg_temperature', 'avg_humidity', 'avg_pressure']`
-- 确保预测时特征的**顺序和名称**与训练时完全一致
-- 顺序错了预测结果就会出错
+当前 notebook 中最终保存的是表现最好的 `Random Forest` 模型。
 
----
+## 使用方法
 
-## 如何在 Flask 中使用？
+### 1. 准备环境
 
-```python
-import pickle
-import pandas as pd
+建议使用 Python 3.10+，并安装 notebook 运行所需依赖：
 
-# 1. 加载模型和特征列表（Flask启动时执行一次）
-with open('bike_availability_model.pkl', 'rb') as f:
-    model = pickle.load(f)
-
-with open('model_features.pkl', 'rb') as f:
-    features = pickle.load(f)
-
-# 2. 预测时使用
-def predict_bikes(station_id, capacity, lat, lon,
-                  hour, day, day_of_week, is_weekend,
-                  avg_temperature, avg_humidity, avg_pressure):
-
-    # 构造输入数据，顺序必须与features一致
-    input_data = pd.DataFrame([{
-        'station_id': station_id,
-        'capacity': capacity,
-        'lat': lat,
-        'lon': lon,
-        'hour': hour,
-        'day': day,
-        'day_of_week': day_of_week,
-        'is_weekend': is_weekend,
-        'avg_temperature': avg_temperature,
-        'avg_humidity': avg_humidity,
-        'avg_pressure': avg_pressure
-    }])[features]  # 用features确保列顺序正确
-
-    prediction = model.predict(input_data)
-    return int(round(prediction[0]))
+```bash
+pip install jupyter pandas numpy matplotlib seaborn scikit-learn joblib
 ```
 
+### 2. 准备数据
+
+将训练数据文件 `final_merged_data.csv` 放在和 `ml.ipynb` 同一目录下，也就是 `machine_learning/` 目录中。
+
+Notebook 默认通过下面的方式读取数据：
+
+```python
+df = pd.read_csv('final_merged_data.csv')
+```
+
+所以如果文件名或路径不同，需要同步修改 notebook 中的读取代码。
+
+### 3. 运行 notebook
+
+进入项目目录后启动 Jupyter：
+
+```bash
+jupyter notebook
+```
+
+然后打开 `machine_learning/ml.ipynb`，按照单元格从上到下依次运行即可。
+
+如果你使用 VS Code，也可以直接打开该 notebook 并顺序执行所有 cells。
+
+## 运行输出
+
+notebook 执行完成后，会在当前目录生成以下文件：
+
+- `bike_availability_model.pkl`：训练好的最佳模型
+- `model_features.pkl`：模型训练时使用的特征列表
+
+这两个文件可以直接给 Flask 应用加载，用于后续预测。
+
+## Notebook 主要流程
+
+整个 notebook 大致分为以下几个阶段：
+
+1. 数据加载与初步检查
+2. 缺失值和目标变量分析
+3. 特征选择
+4. 特征工程
+5. 相关性分析
+6. 划分训练集和测试集
+7. 模型训练与效果对比
+8. 特征重要性分析
+9. 保存最佳模型
+
+## 模型地址
+
+如果不想本地重新训练，也可以直接查看或下载已经上传的模型文件：
+
+<https://huggingface.co/ucdse/bike_availability_model/tree/main>
