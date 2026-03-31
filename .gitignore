@@ -120,3 +120,5 @@ docs
 .scannerworkmachine_learning/final_merged_data.csv
 machine_learning/bike_availability_model.pkl
 machine_learning/model_features.pkl
+
+.scannerwork
