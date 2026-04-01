@@ -47,7 +47,7 @@ class PredictionError(Exception):
 
 def get_station_predictions(station_id: int) -> List[Dict[str, Any]]:
     """
-    获取某个站点基于缓存天气预报的可用单车预测结果。这将在不到 5 毫秒的时间内根据所有未来天气批处理生成！
+    获取某个站点基于缓存天气预报的可用单车预测结果。
     """
     _load_model()
 
