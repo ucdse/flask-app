@@ -11,4 +11,5 @@ flask db upgrade
 echo "Starting Gunicorn..."
 # exec 能够让 gunicorn 替换当前 shell 进程，接收系统信号
 # gthread 多线程模式：适合长时间 I/O（如 SSE 流式输出），避免单请求霸占进程导致超时
-exec gunicorn -w 4 -b 0.0.0.0:5000 --worker-class gthread --threads 4 --timeout 120 --access-logfile - wsgi:app
+# --preload：在 Master 进程中提前加载应用（含 ML 模型），Worker fork 后共享内存，避免每个 Worker 各自加载一份模型
+exec gunicorn -w 2 -b 0.0.0.0:5000 --worker-class gthread --threads 4 --timeout 120 --preload --access-logfile - wsgi:app
