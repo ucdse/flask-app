@@ -81,7 +81,44 @@ spec:
             }
         }
 
-        stage('3. 构建并推送 Docker 镜像') {
+        stage('3. 下载 ML 模型') {
+            steps {
+                container('python') {
+                    withCredentials([
+                        string(credentialsId: 'huggingface-token', variable: 'HF_TOKEN')
+                    ]) {
+                        sh '''
+                        pip install huggingface_hub
+                        python -c "
+from huggingface_hub import hf_hub_download
+import shutil
+import os
+
+os.makedirs('machine_learning', exist_ok=True)
+
+path1 = hf_hub_download(
+    repo_id='ucdse/bike_availability_model',
+    filename='bike_availability_model.pkl',
+    token='${HF_TOKEN}'
+)
+shutil.copy(path1, 'machine_learning/bike_availability_model.pkl')
+
+path2 = hf_hub_download(
+    repo_id='ucdse/bike_availability_model',
+    filename='model_features.pkl',
+    token='${HF_TOKEN}'
+)
+shutil.copy(path2, 'machine_learning/model_features.pkl')
+
+print('模型下载完成')
+"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('4. 构建并推送 Docker 镜像') {
             when {
                 not { changeRequest() }
             }
@@ -112,7 +149,7 @@ spec:
             }
         }
 
-        stage('4. 部署到 EC2') {
+        stage('5. 部署到 EC2') {
             when {
                 allOf {
                     branch 'main'
