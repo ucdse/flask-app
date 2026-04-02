@@ -1,0 +1,3469 @@
+{
+  "info": {
+    "_postman_id": "019b49e3-e792-4f22-a269-3acc7900d4f4",
+    "name": "Flask App API",
+    "description": "## Flask App — 全部 API\n\n本 Collection 包含 Flask App 后端的所有 API，按模块分文件夹组织。\n\n### 模块概览\n\n| 文件夹 | 说明 |\n| --- | --- |\n| **User** | 注册、验证码、激活、登录、刷新令牌、获取用户信息、登出 |\n| **Station** | 自行车站点列表、站点可用性查询 |\n| **Weather** | 天气预报查询（OpenWeatherMap） |\n| **Journey Planner** | Calculates the optimal route |\n\n### 典型用户流程\n\n1. **注册** — `POST /api/users/register`\n    \n2. **发送验证码**（可选重发） — `POST /api/users/send-verification-code`\n    \n3. **激活** — `POST /api/users/activate` 或 `POST /api/users/activate-by-token`\n    \n4. **登录** — `POST /api/users/login`，获取 JWT 令牌\n    \n5. **刷新令牌** — `POST /api/users/refresh`\n    \n6. **获取当前用户** — `GET /api/users/me`\n    \n7. **登出** — `POST /api/users/logout`\n    \n\n### Collection Variables\n\n| 变量 | 默认值 | 说明 |\n| --- | --- | --- |\n| `baseUrl` | `http://127.0.0.1:5000` | 服务地址 |\n| `username` | `alice` | 注册用户名 |\n| `email` | `alice@example.com` | 注册邮箱 |\n| `password` | `password123` | 密码（注册 & 登录共用） |\n| `avatar_url` | _(空)_ | 头像地址（可选） |\n| `identifier` | `alice@example.com` | 登录/验证标识（用户名或邮箱） |\n| `verification_code` | _(空)_ | 6 位验证码（从控制台或邮件获取） |\n| `activation_token` | _(空)_ | 激活链接 Token（从邮件获取） |\n| `station_number` | `42` | 站点编号 |\n| `lat` | `53.3498` | 纬度（都柏林） |\n| `lon` | `-6.2603` | 经度（都柏林） |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52113068",
+    "_collection_link": "https://go.postman.co/collection/52113068-019b49e3-e792-4f22-a269-3acc7900d4f4?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "User Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 user registered\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"user registered\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 包含 id\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"id\");",
+                  "    pm.expect(jsonData.data.id).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"data.username 与请求一致\", function () {",
+                  "    pm.expect(jsonData.data.username).to.eql(pm.collectionVariables.get(\"username\"));",
+                  "});",
+                  "",
+                  "pm.test(\"data.email 与请求一致（小写）\", function () {",
+                  "    const expected = pm.collectionVariables.get(\"email\").toLowerCase();",
+                  "    pm.expect(jsonData.data.email).to.eql(expected);",
+                  "});",
+                  "",
+                  "pm.test(\"data.is_active 为 false（需邮箱验证）\", function () {",
+                  "    pm.expect(jsonData.data.is_active).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 created_at\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"created_at\");",
+                  "    pm.expect(jsonData.data.created_at).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "// ─── 保存用户信息到 Collection Variables ───",
+                  "",
+                  "if (jsonData && jsonData.data) {",
+                  "    pm.collectionVariables.set(\"user_id\", String(jsonData.data.id || \"\"));",
+                  "    pm.collectionVariables.set(\"registered_username\", jsonData.data.username || \"\");",
+                  "    pm.collectionVariables.set(\"registered_email\", jsonData.data.email || \"\");",
+                  "",
+                  "    console.log(\"[✓] user_id 已保存到 Collection Variables: \" + jsonData.data.id);",
+                  "    console.log(\"[✓] registered_username 已保存: \" + jsonData.data.username);",
+                  "    console.log(\"[✓] registered_email 已保存: \" + jsonData.data.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"avatar_url\": \"{{avatar_url}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "register"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n| --- | --- |\n| **名称** | 用户注册 |\n| **方法** | `POST` |\n| **路径** | `/api/users/register` |\n| **鉴权** | 无（注册前接口） |\n| **Content-Type** | `application/json` |\n\n---\n\n## 请求参数\n\n| 字段 | 类型 | 必填 | 规则 | 说明 |\n| --- | --- | --- | --- | --- |\n| `username` | string | 是 | `min_length=3`, `max_length=64`，自动 trim，仅允许 `[A-Za-z0-9_.-]` | 用户名 |\n| `email` | string | 是 | `max_length=120`，自动 trim 并转小写，需符合邮箱格式 | 邮箱 |\n| `password` | string | 是 | `min_length=8`, `max_length=128` | 登录密码 |\n| `avatar_url` | string | null | 否 | `max_length=255`，空字符串视为 null |\n\n**请求示例：**\n\n``` json\n{\n  \"username\": \"alice\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\",\n  \"avatar_url\": \"https://example.com/avatar.jpg\"\n}\n\n ```\n\n---\n\n## 成功响应\n\n**HTTP 201** · 业务码 `code = 0`\n\n``` json\n{\n  \"code\": 0,\n  \"msg\": \"user registered\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": \"https://example.com/avatar.jpg\",\n    \"is_active\": false,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}\n\n ```\n\n| 字段 | 类型 | 说明 |\n| --- | --- | --- |\n| `id` | int | 用户 ID（自增主键） |\n| `username` | string | 用户名 |\n| `email` | string | 邮箱（小写） |\n| `avatar_url` | string | null |\n| `is_active` | bool | 账户是否激活，新注册用户固定为 `false` |\n| `created_at` | string | 注册时间（ISO 8601 UTC） |\n\n---\n\n## 错误响应\n\n### 400 — 参数校验失败\n\n业务码 `40001`，字段缺失或格式不合法。\n\n``` json\n{\n  \"code\": 40001,\n  \"msg\": \"username: String should have at least 3 characters\",\n  \"data\": null\n}\n\n ```\n\n### 409 — 用户名已存在\n\n业务码 `40901`。\n\n``` json\n{\n  \"code\": 40901,\n  \"msg\": \"username already exists.\",\n  \"data\": null\n}\n\n ```\n\n### 409 — 邮箱已存在\n\n业务码 `40902`。\n\n``` json\n{\n  \"code\": 40902,\n  \"msg\": \"email already exists.\",\n  \"data\": null\n}\n\n ```\n\n### 409 — 用户冲突（数据库约束）\n\n业务码 `40903`。\n\n``` json\n{\n  \"code\": 40903,\n  \"msg\": \"username or email already exists.\",\n  \"data\": null\n}\n\n ```\n\n---\n\n## 注册后流程\n\n1. 注册成功后 `is_active = false`，需通过邮箱验证激活。\n    \n2. 服务端自动发送 6 位验证码邮件（有效期默认 5 分钟）。\n    \n3. 激活方式二选一：\n    \n    - `POST /api/users/activate` — 提交 `identifier` + `code`\n        \n    - `POST /api/users/activate-by-token` — 提交邮件中的激活链接 `token`\n        \n4. 激活前无法登录（登录接口返回 403）。"
+          },
+          "response": [
+            {
+              "name": "201 — 注册成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"alice\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\",\n  \"avatar_url\": \"https://example.com/avatar.jpg\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "register"
+                  ]
+                }
+              },
+              "status": "CREATED",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"user registered\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": \"https://example.com/avatar.jpg\",\n    \"is_active\": false,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}"
+            },
+            {
+              "name": "201 — 注册成功（无头像）",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"bob\",\n  \"email\": \"bob@example.com\",\n  \"password\": \"securepass\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "register"
+                  ]
+                }
+              },
+              "status": "CREATED",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"user registered\",\n  \"data\": {\n    \"id\": 2,\n    \"username\": \"bob\",\n    \"email\": \"bob@example.com\",\n    \"avatar_url\": null,\n    \"is_active\": false,\n    \"created_at\": \"2025-02-18T12:35:10.123000+00:00\"\n  }\n}"
+            },
+            {
+              "name": "400 — 用户名过短",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"ab\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "register"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40001,\n  \"msg\": \"username: String should have at least 3 characters\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 — 用户名已存在",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"alice\",\n  \"email\": \"new@example.com\",\n  \"password\": \"password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "register"
+                  ]
+                }
+              },
+              "status": "CONFLICT",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40901,\n  \"msg\": \"username already exists.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 — 邮箱已存在",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "register"
+                  ]
+                }
+              },
+              "status": "CONFLICT",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40902,\n  \"msg\": \"email already exists.\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Verification Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 verification code sent\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"verification code sent\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data.message 为 verification code sent\", function () {",
+                  "    pm.expect(jsonData.data.message).to.eql(\"verification code sent\");",
+                  "});",
+                  "",
+                  "console.log(\"[✓] 验证码已发送，请从控制台或邮件获取\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{identifier}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/send-verification-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "send-verification-code"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 发送验证码 |\n| **方法** | `POST` |\n| **路径** | `/api/users/send-verification-code` |\n| **鉴权** | 无 |\n| **Content-Type** | `application/json` |\n\n---\n\n## 请求参数\n\n| 字段 | 类型 | 必填 | 规则 | 说明 |\n|---|---|---|---|---|\n| `identifier` | string | 是 | `min_length=1`, `max_length=120`，自动 trim | 用户名或邮箱 |\n\n**请求示例：**\n\n```json\n{\n  \"identifier\": \"alice@example.com\"\n}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"verification code sent\",\n  \"data\": {\n    \"message\": \"verification code sent\"\n  }\n}\n```\n\n---\n\n## 错误响应\n\n### 400 — 参数校验失败\n\n业务码 `40001`。\n\n```json\n{\n  \"code\": 40001,\n  \"msg\": \"identifier: Field required\",\n  \"data\": null\n}\n```\n\n### 400 — 账号已激活\n\n业务码 `40101`，已激活用户无需验证码。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"account is already active\",\n  \"data\": null\n}\n```\n\n### 404 — 用户不存在\n\n业务码 `40101`。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"user not found\",\n  \"data\": null\n}\n```\n\n### 429 — 发送过于频繁\n\n业务码 `40101`，每分钟最多请求一次。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"please wait 45 seconds before requesting another code\",\n  \"data\": null\n}\n```\n\n---\n\n## 补充说明\n\n- 仅对未激活用户有效。\n- 每次发送会覆盖旧验证码，仅最新验证码有效。\n- 验证码有效期默认 5 分钟，重发冷却默认 1 分钟。\n- 未配置 SMTP 时验证码输出到服务端控制台。"
+          },
+          "response": [
+            {
+              "name": "200 — 发送成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/send-verification-code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "send-verification-code"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"verification code sent\",\n  \"data\": {\n    \"message\": \"verification code sent\"\n  }\n}"
+            },
+            {
+              "name": "400 — 账号已激活",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"active_user@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/send-verification-code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "send-verification-code"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"account is already active\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 — 用户不存在",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"nonexistent@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/send-verification-code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "send-verification-code"
+                  ]
+                }
+              },
+              "status": "NOT FOUND",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"user not found\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "429 — 发送过于频繁",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/send-verification-code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "send-verification-code"
+                  ]
+                }
+              },
+              "status": "TOO MANY REQUESTS",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"please wait 45 seconds before requesting another code\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Activate Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 account activated\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"account activated\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data.is_active 为 true\", function () {",
+                  "    pm.expect(jsonData.data.is_active).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含用户信息\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"id\");",
+                  "    pm.expect(jsonData.data).to.have.property(\"username\");",
+                  "    pm.expect(jsonData.data).to.have.property(\"email\");",
+                  "});",
+                  "",
+                  "console.log(\"[✓] 账户激活成功: \" + jsonData.data.username);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{identifier}}\",\n  \"code\": \"{{verification_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "activate"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 激活账户（验证码） |\n| **方法** | `POST` |\n| **路径** | `/api/users/activate` |\n| **鉴权** | 无 |\n| **Content-Type** | `application/json` |\n\n---\n\n## 请求参数\n\n| 字段 | 类型 | 必填 | 规则 | 说明 |\n|---|---|---|---|---|\n| `identifier` | string | 是 | `min_length=1`, `max_length=120`，自动 trim | 用户名或邮箱 |\n| `code` | string | 是 | 固定 6 位数字，自动 trim | 邮箱验证码 |\n\n**请求示例：**\n\n```json\n{\n  \"identifier\": \"alice@example.com\",\n  \"code\": \"123456\"\n}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"account activated\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": null,\n    \"is_active\": true,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}\n```\n\n---\n\n## 错误响应\n\n### 400 — 参数校验失败\n\n业务码 `40001`。\n\n```json\n{\n  \"code\": 40001,\n  \"msg\": \"code: Value error, code must be a 6-digit string.\",\n  \"data\": null\n}\n```\n\n### 400 — 账号已激活\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"account is already active\",\n  \"data\": null\n}\n```\n\n### 400 — 验证码错误\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"invalid verification code\",\n  \"data\": null\n}\n```\n\n### 400 — 验证码过期\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"verification code expired\",\n  \"data\": null\n}\n```\n\n### 404 — 用户不存在\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"user not found\",\n  \"data\": null\n}\n```"
+          },
+          "response": [
+            {
+              "name": "200 — 激活成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\",\n  \"code\": \"123456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"account activated\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": null,\n    \"is_active\": true,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}"
+            },
+            {
+              "name": "400 — 验证码错误",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\",\n  \"code\": \"000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"invalid verification code\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 — 验证码过期",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\",\n  \"code\": \"123456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"verification code expired\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 — 用户不存在",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"nonexistent@example.com\",\n  \"code\": \"123456\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate"
+                  ]
+                }
+              },
+              "status": "NOT FOUND",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"user not found\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Activate by Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 account activated\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"account activated\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data.is_active 为 true\", function () {",
+                  "    pm.expect(jsonData.data.is_active).to.eql(true);",
+                  "});",
+                  "",
+                  "console.log(\"[✓] 账户通过 Token 激活成功: \" + jsonData.data.username);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{activation_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/activate-by-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "activate-by-token"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 激活账户（Token 链接） |\n| **方法** | `POST` |\n| **路径** | `/api/users/activate-by-token` |\n| **鉴权** | 无 |\n| **Content-Type** | `application/json` |\n\n---\n\n## 请求参数\n\n| 字段 | 类型 | 必填 | 规则 | 说明 |\n|---|---|---|---|---|\n| `token` | string | 是 | `min_length=1`，自动 trim | 邮件中的激活链接 Token |\n\n**请求示例：**\n\n```json\n{\n  \"token\": \"aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789-_ab\"\n}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"account activated\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": null,\n    \"is_active\": true,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}\n```\n\n---\n\n## 错误响应\n\n### 400 — Token 无效或已使用\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"invalid or expired activation link\",\n  \"data\": null\n}\n```\n\n### 400 — 账号已激活\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"account is already active\",\n  \"data\": null\n}\n```\n\n### 400 — 链接已过期\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"activation link expired\",\n  \"data\": null\n}\n```\n\n---\n\n## 补充说明\n\n- Token 由注册时自动生成，包含在验证邮件的激活链接中。\n- 激活成功后 Token 被清除，不可重复使用。\n- 与验证码共享过期时间（默认 5 分钟）。"
+          },
+          "response": [
+            {
+              "name": "200 — 激活成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789-_ab\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate-by-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate-by-token"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"account activated\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": null,\n    \"is_active\": true,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}"
+            },
+            {
+              "name": "400 — Token 无效",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"invalid-token-value\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate-by-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate-by-token"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"invalid or expired activation link\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 — 链接已过期",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"expired-token-value\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/activate-by-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "activate-by-token"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"activation link expired\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "User Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 ok\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 包含 access_token\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"access_token\");",
+                  "    pm.expect(jsonData.data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 refresh_token\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"refresh_token\");",
+                  "    pm.expect(jsonData.data.refresh_token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"token_type 为 Bearer\", function () {",
+                  "    pm.expect(jsonData.data.token_type).to.eql(\"Bearer\");",
+                  "});",
+                  "",
+                  "pm.test(\"expires_in 为正整数\", function () {",
+                  "    pm.expect(jsonData.data.expires_in).to.be.a(\"number\").and.to.be.above(0);",
+                  "});",
+                  "",
+                  "// ─── 保存令牌到 Collection Variables ───",
+                  "",
+                  "if (jsonData && jsonData.data) {",
+                  "    pm.collectionVariables.set(\"access_token\", jsonData.data.access_token || \"\");",
+                  "    pm.collectionVariables.set(\"refresh_token\", jsonData.data.refresh_token || \"\");",
+                  "    pm.collectionVariables.set(\"token_type\", jsonData.data.token_type || \"Bearer\");",
+                  "    pm.collectionVariables.set(\"expires_in\", String(jsonData.data.expires_in || \"\"));",
+                  "",
+                  "    console.log(\"[✓] access_token 已保存到 Collection Variables\");",
+                  "    console.log(\"[✓] refresh_token 已保存到 Collection Variables\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{identifier}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "login"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 用户登录 |\n| **方法** | `POST` |\n| **路径** | `/api/users/login` |\n| **鉴权** | 无（登录前接口） |\n| **Content-Type** | `application/json` |\n\n---\n\n## 请求参数\n\n| 字段 | 类型 | 必填 | 规则 | 说明 |\n|---|---|---|---|---|\n| `identifier` | string | 是 | `min_length=1`, `max_length=120`，自动 trim | 用户名或邮箱 |\n| `password` | string | 是 | `min_length=1` | 登录密码 |\n\n**请求示例：**\n\n```json\n{\n  \"identifier\": \"alice@example.com\",\n  \"password\": \"password123\"\n}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"access_token\": \"<JWT_ACCESS_TOKEN>\",\n    \"refresh_token\": \"<JWT_REFRESH_TOKEN>\",\n    \"expires_in\": 900,\n    \"token_type\": \"Bearer\"\n  }\n}\n```\n\n| 字段 | 类型 | 说明 |\n|---|---|---|\n| `access_token` | string | JWT 访问令牌 |\n| `refresh_token` | string | JWT 刷新令牌 |\n| `expires_in` | int | access_token 有效期（秒），默认 900 |\n| `token_type` | string | 固定为 `Bearer` |\n\n---\n\n## 错误响应\n\n### 400 — 参数校验失败\n\n业务码 `40001`。\n\n```json\n{\n  \"code\": 40001,\n  \"msg\": \"identifier: Field required\",\n  \"data\": null\n}\n```\n\n### 401 — 用户名/邮箱或密码错误\n\n业务码 `40101`。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"invalid username/email or password\",\n  \"data\": null\n}\n```\n\n### 403 — 账号未激活或被禁用\n\n业务码 `40101`。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"account is disabled\",\n  \"data\": null\n}\n```\n\n---\n\n## 自动化说明\n\n登录成功后，Tests 脚本会自动将以下字段写入 Collection Variables：\n\n- `access_token`\n- `refresh_token`\n- `token_type`\n- `expires_in`\n\n后续受保护接口请求头使用：\n\n```\nAuthorization: Bearer {{access_token}}\n```"
+          },
+          "response": [
+            {
+              "name": "200 — 登录成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\",\n  \"password\": \"password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"expires_in\": 900,\n    \"token_type\": \"Bearer\"\n  }\n}"
+            },
+            {
+              "name": "400 — 参数校验失败",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "login"
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40001,\n  \"msg\": \"identifier: Field required\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 — 凭据无效",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"alice@example.com\",\n  \"password\": \"wrongpassword\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "login"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"invalid username/email or password\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "403 — 账号被禁用",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"disabled_user@example.com\",\n  \"password\": \"password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "login"
+                  ]
+                }
+              },
+              "status": "FORBIDDEN",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"account is disabled\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 ok\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 包含新 access_token\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"access_token\");",
+                  "    pm.expect(jsonData.data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含新 refresh_token\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"refresh_token\");",
+                  "    pm.expect(jsonData.data.refresh_token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"token_type 为 Bearer\", function () {",
+                  "    pm.expect(jsonData.data.token_type).to.eql(\"Bearer\");",
+                  "});",
+                  "",
+                  "pm.test(\"expires_in 为正整数\", function () {",
+                  "    pm.expect(jsonData.data.expires_in).to.be.a(\"number\").and.to.be.above(0);",
+                  "});",
+                  "",
+                  "// ─── 更新令牌到 Collection Variables ───",
+                  "",
+                  "if (jsonData && jsonData.data) {",
+                  "    pm.collectionVariables.set(\"access_token\", jsonData.data.access_token || \"\");",
+                  "    pm.collectionVariables.set(\"refresh_token\", jsonData.data.refresh_token || \"\");",
+                  "    pm.collectionVariables.set(\"token_type\", jsonData.data.token_type || \"Bearer\");",
+                  "    pm.collectionVariables.set(\"expires_in\", String(jsonData.data.expires_in || \"\"));",
+                  "",
+                  "    console.log(\"[✓] access_token 已刷新并保存\");",
+                  "    console.log(\"[✓] refresh_token 已刷新并保存\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "refresh"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 刷新令牌 |\n| **方法** | `POST` |\n| **路径** | `/api/users/refresh` |\n| **鉴权** | 无（使用 refresh_token 鉴权） |\n| **Content-Type** | `application/json` |\n\n---\n\n## 请求参数\n\n| 字段 | 类型 | 必填 | 规则 | 说明 |\n|---|---|---|---|---|\n| `refresh_token` | string | 是 | `min_length=1`，自动 trim | 登录时获取的 refresh_token |\n\n**请求示例：**\n\n```json\n{\n  \"refresh_token\": \"{{refresh_token}}\"\n}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n返回新的 `access_token` 和 `refresh_token`，格式与登录接口一致。\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"access_token\": \"<NEW_JWT_ACCESS_TOKEN>\",\n    \"refresh_token\": \"<NEW_JWT_REFRESH_TOKEN>\",\n    \"expires_in\": 900,\n    \"token_type\": \"Bearer\"\n  }\n}\n```\n\n---\n\n## 错误响应\n\n### 400 — 参数校验失败\n\n业务码 `40001`。\n\n```json\n{\n  \"code\": 40001,\n  \"msg\": \"refresh_token: Field required\",\n  \"data\": null\n}\n```\n\n### 401 — refresh_token 无效或过期\n\n业务码 `40101`。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"refresh token expired\",\n  \"data\": null\n}\n```\n\n### 401 — refresh_token 已被撤销\n\n登出后 token_version 递增，旧 refresh_token 失效。\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"refresh token has been revoked\",\n  \"data\": null\n}\n```\n\n---\n\n## 自动化说明\n\n刷新成功后，Tests 脚本会自动更新 Collection Variables 中的 `access_token` 和 `refresh_token`。"
+          },
+          "response": [
+            {
+              "name": "200 — 刷新成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "refresh"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"expires_in\": 900,\n    \"token_type\": \"Bearer\"\n  }\n}"
+            },
+            {
+              "name": "401 — refresh_token 过期",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"expired.token.here\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "refresh"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"refresh token expired\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 — refresh_token 已撤销",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"revoked.token.here\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "refresh"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"refresh token has been revoked\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 ok\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 包含 id\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"id\");",
+                  "    pm.expect(jsonData.data.id).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 username\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"username\");",
+                  "    pm.expect(jsonData.data.username).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 email\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"email\");",
+                  "    pm.expect(jsonData.data.email).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"data.is_active 为 true\", function () {",
+                  "    pm.expect(jsonData.data.is_active).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 created_at\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"created_at\");",
+                  "});",
+                  "",
+                  "console.log(\"[✓] 当前用户: \" + jsonData.data.username + \" (\" + jsonData.data.email + \")\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 获取当前用户信息 |\n| **方法** | `GET` |\n| **路径** | `/api/users/me` |\n| **鉴权** | `Authorization: Bearer <access_token>` |\n\n---\n\n## 请求参数\n\n无请求体。需在请求头中携带有效的 `access_token`。\n\n**请求头：**\n\n```\nAuthorization: Bearer {{access_token}}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": \"https://example.com/avatar.jpg\",\n    \"is_active\": true,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}\n```\n\n| 字段 | 类型 | 说明 |\n|---|---|---|\n| `id` | int | 用户 ID |\n| `username` | string | 用户名 |\n| `email` | string | 邮箱 |\n| `avatar_url` | string \\| null | 头像地址 |\n| `is_active` | bool | 账户状态 |\n| `created_at` | string | 注册时间（ISO 8601 UTC） |\n\n---\n\n## 错误响应\n\n### 401 — 缺少或无效的 Authorization 头\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"missing or invalid Authorization header\",\n  \"data\": null\n}\n```\n\n### 401 — access_token 过期\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"access token expired\",\n  \"data\": null\n}\n```\n\n### 401 — access_token 已被撤销\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"access token has been revoked\",\n  \"data\": null\n}\n```\n\n### 401 — 用户不存在或已禁用\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"user not found or disabled\",\n  \"data\": null\n}\n```"
+          },
+          "response": [
+            {
+              "name": "200 — 获取成功",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "me"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"alice\",\n    \"email\": \"alice@example.com\",\n    \"avatar_url\": \"https://example.com/avatar.jpg\",\n    \"is_active\": true,\n    \"created_at\": \"2025-02-18T12:34:56.789000+00:00\"\n  }\n}"
+            },
+            {
+              "name": "401 — 缺少 Authorization 头",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "me"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"missing or invalid Authorization header\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 — access_token 过期",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer expired.token.here",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "me"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"access token expired\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "User Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 logged out\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"logged out\");",
+                  "});",
+                  "",
+                  "pm.test(\"data 为 null\", function () {",
+                  "    pm.expect(jsonData.data).to.be.null;",
+                  "});",
+                  "",
+                  "// ─── 清空令牌 ───",
+                  "",
+                  "pm.collectionVariables.set(\"access_token\", \"\");",
+                  "pm.collectionVariables.set(\"refresh_token\", \"\");",
+                  "pm.collectionVariables.set(\"expires_in\", \"\");",
+                  "",
+                  "console.log(\"[✓] 登出成功，已清空 Collection Variables 中的令牌\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "logout"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 用户登出 |\n| **方法** | `POST` |\n| **路径** | `/api/users/logout` |\n| **鉴权** | `Authorization: Bearer <access_token>` |\n\n---\n\n## 请求参数\n\n无请求体。需在请求头中携带有效的 `access_token`。\n\n**请求头：**\n\n```\nAuthorization: Bearer {{access_token}}\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"logged out\",\n  \"data\": null\n}\n```\n\n---\n\n## 错误响应\n\n### 401 — 缺少或无效的 Authorization 头\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"missing or invalid Authorization header\",\n  \"data\": null\n}\n```\n\n### 401 — access_token 过期\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"access token expired\",\n  \"data\": null\n}\n```\n\n### 401 — access_token 已被撤销\n\n```json\n{\n  \"code\": 40101,\n  \"msg\": \"access token has been revoked\",\n  \"data\": null\n}\n```\n\n---\n\n## 补充说明\n\n- 登出会递增用户的 `token_version`，使该用户所有已签发的 `access_token` 和 `refresh_token` 全部失效。\n- 登出成功后，Tests 脚本会自动清空 Collection Variables 中的令牌。\n- 如需重新使用，请再次调用登录接口获取新令牌。"
+          },
+          "response": [
+            {
+              "name": "200 — 登出成功",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "logout"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"logged out\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 — 缺少 Authorization 头",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "logout"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"missing or invalid Authorization header\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 — access_token 过期",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer expired.token.here",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "logout"
+                  ]
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40101,\n  \"msg\": \"access token expired\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ],
+      "description": "用户模块：注册、验证码、激活、登录、刷新令牌、用户信息、登出。"
+    },
+    {
+      "name": "Station",
+      "item": [
+        {
+          "name": "List All Stations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 ok\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 为数组\", function () {",
+                  "    pm.expect(jsonData.data).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    const first = jsonData.data[0];",
+                  "",
+                  "    pm.test(\"站点包含 number\", function () {",
+                  "        pm.expect(first).to.have.property(\"number\");",
+                  "        pm.expect(first.number).to.be.a(\"number\");",
+                  "    });",
+                  "",
+                  "    pm.test(\"站点包含 name\", function () {",
+                  "        pm.expect(first).to.have.property(\"name\");",
+                  "        pm.expect(first.name).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "",
+                  "    pm.test(\"站点包含坐标\", function () {",
+                  "        pm.expect(first).to.have.property(\"latitude\");",
+                  "        pm.expect(first).to.have.property(\"longitude\");",
+                  "    });",
+                  "",
+                  "    pm.test(\"站点包含 bike_stands\", function () {",
+                  "        pm.expect(first).to.have.property(\"bike_stands\");",
+                  "        pm.expect(first.bike_stands).to.be.a(\"number\");",
+                  "    });",
+                  "",
+                  "    console.log(\"[✓] 获取到 \" + jsonData.data.length + \" 个站点\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stations/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stations",
+                ""
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n| --- | --- |\n| **名称** | 获取所有站点 |\n| **方法** | `GET` |\n| **路径** | `/api/stations/` |\n| **鉴权** | 无 |\n\n---\n\n## 请求参数\n\n无。\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n``` json\n{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": [\n    {\n      \"number\": 42,\n      \"contract_name\": \"dublin\",\n      \"name\": \"SMITHFIELD NORTH\",\n      \"address\": \"Smithfield North\",\n      \"latitude\": 53.349562,\n      \"longitude\": -6.278198,\n      \"banking\": false,\n      \"bonus\": false,\n      \"bike_stands\": 30\n    }\n  ]\n}\n\n ```\n\n| 字段 | 类型 | 说明 |\n| --- | --- | --- |\n| `number` | int | 站点编号（主键） |\n| `contract_name` | string | 合同/运营商名称 |\n| `name` | string | 站点名称 |\n| `address` | string | 站点地址 |\n| `latitude` | float | 纬度 |\n| `longitude` | float | 经度 |\n| `banking` | bool | 是否支持现场刷卡支付 |\n| `bonus` | bool | 是否为奖励站点（还车可获额外时长） |\n| `bike_stands` | int | 总停车桩数 |\n\n---\n\n## 补充说明\n\n- 返回所有站点，按 `number` 升序排列。\n    \n- 数据来源于数据库中的 `station` 表。"
+          },
+          "response": [
+            {
+              "name": "200 — 获取成功",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": [\n    {\n      \"number\": 42,\n      \"contract_name\": \"dublin\",\n      \"name\": \"SMITHFIELD NORTH\",\n      \"address\": \"Smithfield North\",\n      \"latitude\": 53.349562,\n      \"longitude\": -6.278198,\n      \"banking\": false,\n      \"bonus\": false,\n      \"bike_stands\": 30\n    },\n    {\n      \"number\": 43,\n      \"contract_name\": \"dublin\",\n      \"name\": \"PORTOBELLO ROAD\",\n      \"address\": \"Portobello Road\",\n      \"latitude\": 53.330621,\n      \"longitude\": -6.264009,\n      \"banking\": true,\n      \"bonus\": false,\n      \"bike_stands\": 20\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Station Availability",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 ok\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 为数组\", function () {",
+                  "    pm.expect(jsonData.data).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    const first = jsonData.data[0];",
+                  "",
+                  "    pm.test(\"记录包含 number\", function () {",
+                  "        pm.expect(first).to.have.property(\"number\");",
+                  "        pm.expect(first.number).to.be.a(\"number\");",
+                  "    });",
+                  "",
+                  "    pm.test(\"记录包含 available_bikes\", function () {",
+                  "        pm.expect(first).to.have.property(\"available_bikes\");",
+                  "        pm.expect(first.available_bikes).to.be.a(\"number\");",
+                  "    });",
+                  "",
+                  "    pm.test(\"记录包含 available_bike_stands\", function () {",
+                  "        pm.expect(first).to.have.property(\"available_bike_stands\");",
+                  "        pm.expect(first.available_bike_stands).to.be.a(\"number\");",
+                  "    });",
+                  "",
+                  "    pm.test(\"记录包含 status\", function () {",
+                  "        pm.expect(first).to.have.property(\"status\");",
+                  "        pm.expect(first.status).to.be.a(\"string\");",
+                  "    });",
+                  "",
+                  "    pm.test(\"记录包含 last_update\", function () {",
+                  "        pm.expect(first).to.have.property(\"last_update\");",
+                  "        pm.expect(first.last_update).to.be.a(\"number\");",
+                  "    });",
+                  "",
+                  "    console.log(\"[✓] 获取到 \" + jsonData.data.length + \" 条可用性记录\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stations/{{station_number}}/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stations",
+                "{{station_number}}",
+                "availability"
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 获取站点可用性 |\n| **方法** | `GET` |\n| **路径** | `/api/stations/:number/availability` |\n| **鉴权** | 无 |\n\n---\n\n## 请求参数（路径参数）\n\n| 参数 | 类型 | 必填 | 说明 |\n|---|---|---|---|\n| `number` | int | 是 | 站点编号（如 `42`） |\n\n**请求示例：**\n\n```\nGET /api/stations/42/availability\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n返回该站点最近 24 小时内的可用性记录，按 `requested_at` 升序排列。\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": [\n    {\n      \"number\": 42,\n      \"available_bikes\": 12,\n      \"available_bike_stands\": 18,\n      \"status\": \"OPEN\",\n      \"last_update\": 1770047175000,\n      \"timestamp\": \"2025-02-18T12:00:00\",\n      \"requested_at\": \"2025-02-18T12:00:05\"\n    }\n  ]\n}\n```\n\n| 字段 | 类型 | 说明 |\n|---|---|---|\n| `number` | int | 站点编号 |\n| `available_bikes` | int | 当前可借车辆数 |\n| `available_bike_stands` | int | 当前可还车桩数 |\n| `status` | string | 站点状态（如 `OPEN`、`CLOSED`） |\n| `last_update` | int | API 原始时间戳（毫秒） |\n| `timestamp` | string \\| null | 转换后的时间（ISO 8601） |\n| `requested_at` | string \\| null | 数据采集时间（ISO 8601） |\n\n---\n\n## 错误响应\n\n### 404 — 站点不存在\n\n业务码 `1`，指定编号的站点不在数据库中。\n\n```json\n{\n  \"code\": 1,\n  \"msg\": \"station not found\",\n  \"data\": null\n}\n```\n\n---\n\n## 补充说明\n\n- 默认返回最近 24 小时内的记录。\n- 若该时间段内无记录，返回空数组 `[]`。\n- 数据由后台定时任务从 JCDecaux API 采集并写入数据库。"
+          },
+          "response": [
+            {
+              "name": "200 — 查询成功",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/42/availability",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    "42",
+                    "availability"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": [\n    {\n      \"number\": 42,\n      \"available_bikes\": 12,\n      \"available_bike_stands\": 18,\n      \"status\": \"OPEN\",\n      \"last_update\": 1770047175000,\n      \"timestamp\": \"2025-02-18T12:00:00\",\n      \"requested_at\": \"2025-02-18T12:00:05\"\n    },\n    {\n      \"number\": 42,\n      \"available_bikes\": 10,\n      \"available_bike_stands\": 20,\n      \"status\": \"OPEN\",\n      \"last_update\": 1770050775000,\n      \"timestamp\": \"2025-02-18T13:00:00\",\n      \"requested_at\": \"2025-02-18T13:00:04\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "200 — 无记录（空数组）",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/42/availability",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    "42",
+                    "availability"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": []\n}"
+            },
+            {
+              "name": "404 — 站点不存在",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/99999/availability",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    "99999",
+                    "availability"
+                  ]
+                }
+              },
+              "status": "NOT FOUND",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 1,\n  \"msg\": \"station not found\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Prediction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stations/:station_id/prediction",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stations",
+                ":station_id",
+                "prediction"
+              ],
+              "variable": [
+                {
+                  "key": "station_id",
+                  "value": "67",
+                  "description": "Station number (integer). Example: 67"
+                }
+              ]
+            },
+            "description": "使用机器学习模型预测指定站点未来 24 小时（每小时一个数据点，共 24 条）的可用自行车数量。\n\n**路径参数**\n- `station_id` (integer, required): 站点编号，例如 `67`\n\n**响应字段**\n- `forecast_time` (string, ISO 8601): 预测时间点\n- `predicted_available_bikes` (integer): 该时间点预测可用车辆数\n\n**错误码**\n- `0` 成功\n- `1` 失败（站点不存在或预测服务不可用）"
+          },
+          "response": [
+            {
+              "name": "200 OK – 24-Hour Forecast",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/:station_id/prediction",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    ":station_id",
+                    "prediction"
+                  ],
+                  "variable": [
+                    {
+                      "key": "station_id",
+                      "value": "67"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": [\n    { \"forecast_time\": \"2026-04-02T00:00:00\", \"predicted_available_bikes\": 18 },\n    { \"forecast_time\": \"2026-04-02T01:00:00\", \"predicted_available_bikes\": 15 },\n    { \"forecast_time\": \"2026-04-02T02:00:00\", \"predicted_available_bikes\": 12 },\n    { \"forecast_time\": \"2026-04-02T03:00:00\", \"predicted_available_bikes\": 10 },\n    { \"forecast_time\": \"2026-04-02T04:00:00\", \"predicted_available_bikes\": 9 },\n    { \"forecast_time\": \"2026-04-02T05:00:00\", \"predicted_available_bikes\": 11 },\n    { \"forecast_time\": \"2026-04-02T06:00:00\", \"predicted_available_bikes\": 14 },\n    { \"forecast_time\": \"2026-04-02T07:00:00\", \"predicted_available_bikes\": 8 },\n    { \"forecast_time\": \"2026-04-02T08:00:00\", \"predicted_available_bikes\": 5 },\n    { \"forecast_time\": \"2026-04-02T09:00:00\", \"predicted_available_bikes\": 7 },\n    { \"forecast_time\": \"2026-04-02T10:00:00\", \"predicted_available_bikes\": 13 },\n    { \"forecast_time\": \"2026-04-02T11:00:00\", \"predicted_available_bikes\": 16 },\n    { \"forecast_time\": \"2026-04-02T12:00:00\", \"predicted_available_bikes\": 20 },\n    { \"forecast_time\": \"2026-04-02T13:00:00\", \"predicted_available_bikes\": 22 },\n    { \"forecast_time\": \"2026-04-02T14:00:00\", \"predicted_available_bikes\": 19 },\n    { \"forecast_time\": \"2026-04-02T15:00:00\", \"predicted_available_bikes\": 17 },\n    { \"forecast_time\": \"2026-04-02T16:00:00\", \"predicted_available_bikes\": 14 },\n    { \"forecast_time\": \"2026-04-02T17:00:00\", \"predicted_available_bikes\": 9 },\n    { \"forecast_time\": \"2026-04-02T18:00:00\", \"predicted_available_bikes\": 6 },\n    { \"forecast_time\": \"2026-04-02T19:00:00\", \"predicted_available_bikes\": 10 },\n    { \"forecast_time\": \"2026-04-02T20:00:00\", \"predicted_available_bikes\": 14 },\n    { \"forecast_time\": \"2026-04-02T21:00:00\", \"predicted_available_bikes\": 17 },\n    { \"forecast_time\": \"2026-04-02T22:00:00\", \"predicted_available_bikes\": 19 },\n    { \"forecast_time\": \"2026-04-02T23:00:00\", \"predicted_available_bikes\": 20 }\n  ]\n}"
+            },
+            {
+              "name": "400 Bad Request – Prediction Error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/:station_id/prediction",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    ":station_id",
+                    "prediction"
+                  ],
+                  "variable": [
+                    {
+                      "key": "station_id",
+                      "value": "9999"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 1,\n  \"msg\": \"station not found\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "500 Internal Server Error – Service Unavailable",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/stations/:station_id/prediction",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stations",
+                    ":station_id",
+                    "prediction"
+                  ],
+                  "variable": [
+                    {
+                      "key": "station_id",
+                      "value": "67"
+                    }
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 1,\n  \"msg\": \"Prediction service unavailable\",\n  \"data\": null,\n  \"error\": \"Model file not found\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "站点模块：Dublin Bikes 自行车站点信息与可用性查询。"
+    },
+    {
+      "name": "Weather",
+      "item": [
+        {
+          "name": "Get Weather Forecast",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─── 基础断言 ───",
+                  "",
+                  "pm.test(\"HTTP 状态码为 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"响应 Content-Type 为 application/json\", function () {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test(\"业务码 code 为 0\", function () {",
+                  "    pm.expect(jsonData.code).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"msg 为 ok\", function () {",
+                  "    pm.expect(jsonData.msg).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "// ─── data 字段断言 ───",
+                  "",
+                  "pm.test(\"data 包含 lat\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"lat\");",
+                  "    pm.expect(jsonData.data.lat).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 lon\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"lon\");",
+                  "    pm.expect(jsonData.data.lon).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 timezone\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"timezone\");",
+                  "    pm.expect(jsonData.data.timezone).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 current 天气信息\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"current\");",
+                  "    pm.expect(jsonData.data.current).to.have.property(\"temp\");",
+                  "    pm.expect(jsonData.data.current).to.have.property(\"weather\");",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 hourly 逐时预报\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"hourly\");",
+                  "    pm.expect(jsonData.data.hourly).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "pm.test(\"data 包含 daily 逐日预报\", function () {",
+                  "    pm.expect(jsonData.data).to.have.property(\"daily\");",
+                  "    pm.expect(jsonData.data.daily).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "console.log(\"[✓] 天气数据获取成功，timezone: \" + jsonData.data.timezone);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/weather?lat={{lat}}&lon={{lon}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "weather"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "{{lat}}",
+                  "description": "纬度（必填）"
+                },
+                {
+                  "key": "lon",
+                  "value": "{{lon}}",
+                  "description": "经度（必填）"
+                }
+              ]
+            },
+            "description": "## 接口概览\n\n| 属性 | 值 |\n|---|---|\n| **名称** | 天气预报查询 |\n| **方法** | `GET` |\n| **路径** | `/api/weather` |\n| **鉴权** | 无 |\n| **数据源** | OpenWeatherMap One Call API v3.0 |\n\n---\n\n## 请求参数（Query String）\n\n| 参数 | 类型 | 必填 | 说明 |\n|---|---|---|---|\n| `lat` | float | 是 | 纬度，例如 `53.3498`（都柏林） |\n| `lon` | float | 是 | 经度，例如 `-6.2603`（都柏林） |\n\n**请求示例：**\n\n```\nGET /api/weather?lat=53.3498&lon=-6.2603\n```\n\n---\n\n## 成功响应\n\n**HTTP 200** · 业务码 `code = 0`\n\n```json\n{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"lat\": 53.3498,\n    \"lon\": -6.2603,\n    \"timezone\": \"Europe/Dublin\",\n    \"timezone_offset\": 0,\n    \"current\": {\n      \"dt\": 1706548800,\n      \"temp\": 8.5,\n      \"feels_like\": 6.2,\n      \"pressure\": 1013,\n      \"humidity\": 75,\n      \"clouds\": 80,\n      \"wind_speed\": 3.5,\n      \"weather\": [\n        {\n          \"id\": 803,\n          \"main\": \"Clouds\",\n          \"description\": \"broken clouds\",\n          \"icon\": \"04d\"\n        }\n      ]\n    },\n    \"hourly\": [\"...\"],\n    \"daily\": [\"...\"]\n  }\n}\n```\n\n| 字段 | 类型 | 说明 |\n|---|---|---|\n| `lat` | float | 查询纬度 |\n| `lon` | float | 查询经度 |\n| `timezone` | string | 时区名称 |\n| `timezone_offset` | int | UTC 偏移量（秒） |\n| `current` | object | 当前天气 |\n| `hourly` | array | 逐时预报（48 小时） |\n| `daily` | array | 逐日预报（8 天） |\n\n> `data` 结构为 OpenWeatherMap API 原始返回，已排除 `minutely`。\n\n---\n\n## 错误响应\n\n### 400 — 参数校验失败\n\n业务码 `40001`。\n\n```json\n{\n  \"code\": 40001,\n  \"msg\": \"lat: Field required\",\n  \"data\": null\n}\n```\n\n### 500 — 天气 API 调用失败\n\n业务码 `50001`。\n\n```json\n{\n  \"code\": 50001,\n  \"msg\": \"Failed to fetch weather data: <error_details>\",\n  \"data\": null\n}\n```\n\n---\n\n## 补充说明\n\n- 后端使用 `OPENWEATHER_API_KEY` 环境变量，请求超时 10 秒。\n- 请求参数 `exclude=minutely` 已在后端硬编码。\n- 返回数据为 OpenWeatherMap 原始 JSON（`extra=\"allow\"`）。"
+          },
+          "response": [
+            {
+              "name": "200 — 查询成功（都柏林）",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/weather?lat=53.3498&lon=-6.2603",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "weather"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "53.3498"
+                    },
+                    {
+                      "key": "lon",
+                      "value": "-6.2603"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"lat\": 53.3498,\n    \"lon\": -6.2603,\n    \"timezone\": \"Europe/Dublin\",\n    \"timezone_offset\": 0,\n    \"current\": {\n      \"dt\": 1706548800,\n      \"sunrise\": 1706514000,\n      \"sunset\": 1706547600,\n      \"temp\": 8.5,\n      \"feels_like\": 6.2,\n      \"pressure\": 1013,\n      \"humidity\": 75,\n      \"dew_point\": 4.1,\n      \"uvi\": 0.3,\n      \"clouds\": 80,\n      \"visibility\": 10000,\n      \"wind_speed\": 3.5,\n      \"wind_deg\": 220,\n      \"weather\": [\n        {\n          \"id\": 803,\n          \"main\": \"Clouds\",\n          \"description\": \"broken clouds\",\n          \"icon\": \"04d\"\n        }\n      ]\n    },\n    \"hourly\": [],\n    \"daily\": []\n  }\n}"
+            },
+            {
+              "name": "400 — 缺少 lat 参数",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/weather?lon=-6.2603",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "weather"
+                  ],
+                  "query": [
+                    {
+                      "key": "lon",
+                      "value": "-6.2603"
+                    }
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40001,\n  \"msg\": \"lat: Field required\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 — lat 类型错误",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/weather?lat=abc&lon=-6.2603",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "weather"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "abc"
+                    },
+                    {
+                      "key": "lon",
+                      "value": "-6.2603"
+                    }
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 40001,\n  \"msg\": \"lat: Input should be a valid number\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "500 — 天气 API 调用失败",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/weather?lat=53.3498&lon=-6.2603",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "weather"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "53.3498"
+                    },
+                    {
+                      "key": "lon",
+                      "value": "-6.2603"
+                    }
+                  ]
+                }
+              },
+              "status": "INTERNAL SERVER ERROR",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"code\": 50001,\n  \"msg\": \"Failed to fetch weather data: Connection timed out\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ],
+      "description": "天气模块：基于 OpenWeatherMap One Call API v3.0 查询天气预报。"
+    },
+    {
+      "name": "Jouney Planner",
+      "item": [
+        {
+          "name": "Generate Journey Plan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \n    \"start_address\": \"{{start_address}}\", \n    \"end_address\": \"{{end_address}}\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/journey/plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journey",
+                "plan"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 - Route Planned Successfully",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"O'Connell Street, Dublin\",\n    \"end_address\": \"UCD Belfield\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"route_info\": {\n      \"cycling_route\": {\n        \"cycling_time\": 784\n      },\n      \"end_station\": {\n        \"address\": \"Wilton Terrace\",\n        \"available_bike_stands\": 20,\n        \"coords\": {\n          \"lat\": 53.3324,\n          \"lon\": -6.25272\n        },\n        \"name\": \"WILTON TERRACE\",\n        \"number\": 39,\n        \"walking_time\": 2944\n      },\n      \"start_station\": {\n        \"address\": \"Cathal Brugha Street\",\n        \"available_bikes\": 6,\n        \"coords\": {\n          \"lat\": 53.3522,\n          \"lon\": -6.26033\n        },\n        \"name\": \"CATHAL BRUGHA STREET\",\n        \"number\": 24,\n        \"walking_time\": 136\n      },\n      \"total_duration\": 3864\n    },\n    \"search_context\": {\n      \"end_resolved\": {\n        \"lat\": 53.3094124,\n        \"lon\": -6.218878399999999\n      },\n      \"start_resolved\": {\n        \"lat\": 53.3511781,\n        \"lon\": -6.260969\n      }\n    }\n  },\n  \"msg\": \"ok\"\n}"
+            },
+            {
+              "name": "200 - Route Planned by Coordinates Successfully",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\": { \"lat\": 53.34, \"lon\": -6.26 },\n    \"end\":   { \"lat\": 53.33, \"lon\": -6.25 }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"route_info\": {\n      \"cycling_route\": {\n        \"cycling_time\": 456\n      },\n      \"end_station\": {\n        \"address\": \"Wilton Terrace\",\n        \"available_bike_stands\": 19,\n        \"coords\": {\n          \"lat\": 53.3324,\n          \"lon\": -6.25272\n        },\n        \"name\": \"WILTON TERRACE\",\n        \"number\": 39,\n        \"walking_time\": 307\n      },\n      \"start_station\": {\n        \"address\": \"York Street East\",\n        \"available_bikes\": 5,\n        \"coords\": {\n          \"lat\": 53.3388,\n          \"lon\": -6.262\n        },\n        \"name\": \"YORK STREET EAST\",\n        \"number\": 52,\n        \"walking_time\": 173\n      },\n      \"total_duration\": 936\n    },\n    \"search_context\": {\n      \"end_resolved\": {\n        \"lat\": 53.33,\n        \"lon\": -6.25\n      },\n      \"start_resolved\": {\n        \"lat\": 53.34,\n        \"lon\": -6.26\n      }\n    }\n  },\n  \"msg\": \"ok\"\n}"
+            },
+            {
+              "name": "400 - Missing JSON Body",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 400,\n  \"msg\": \"Missing JSON body\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 - Missing Required Fields",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"origin\": \"Dublin\",\n    \"destination\": \"UCD\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 400,\n  \"msg\": \"Please provide 'start_address'/'end_address' OR 'start'/'end' coords\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 - Invalid Node Types",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\": \"53.34, -6.26\",\n    \"end\": \"53.33, -6.25\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 400,\n  \"msg\": \"Bad Request: 'start' and 'end' must be JSON objects containing coordinates.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 - Missing Lat/Lon Keys",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\": { \"lat\": 53.34 },\n    \"end\":   { \"lon\": -6.25 }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 400,\n  \"msg\": \"Bad Request: Both 'start' and 'end' must contain 'lat' and 'lon' keys.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 - Non-Numeric Coordinates",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\": { \"lat\": \"abc\", \"lon\": -6.26 },\n    \"end\":   { \"lat\": 53.33, \"lon\": -6.25 }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "",
+              "header": [],
+              "cookie": [
+                {
+                  "expires": "Invalid Date",
+                  "domain": "",
+                  "path": ""
+                }
+              ],
+              "body": "{\n  \"code\": 400,\n  \"msg\": \"Bad Request: Coordinate values must be numbers.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 - Coordinates Out of Bounds",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\": { \"lat\": 150.0, \"lon\": -6.26 },\n    \"end\":   { \"lat\": 53.33, \"lon\": -6.25 }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 400,\n  \"msg\": \"Bad Request: Coordinate values must be numbers.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 - Start Address Unresolvable",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"FakeLocationXYZ999123\",\n    \"end_address\": \"UCD Belfield\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "",
+              "header": [],
+              "cookie": [
+                {
+                  "expires": "Invalid Date",
+                  "domain": "",
+                  "path": ""
+                }
+              ],
+              "body": "{\n  \"code\": 404,\n  \"msg\": \"Could not find location: [User's Start Address]\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 - End Address Unresolvable",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"O'Connell Street, Dublin\",\n    \"end_address\": \"FakeLocationXYZ999123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 404,\n  \"msg\": \"Could not find location: [User's End Address]\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 - No Stations Available",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\": { \"lat\": 0.0, \"lon\": 0.0 },\n    \"end\":   { \"lat\": 0.1, \"lon\": 0.1 }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 404,\n  \"msg\": \"No suitable stations found nearby\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "500 Internal Server Error - Geocoding Unconfigured",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"O'Connell Street, Dublin\",\n    \"end_address\": \"UCD Belfield\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 500,\n  \"msg\": \"Server Geocoding not configured\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "500 - Internal Server Error: Unexpected Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"O'Connell Street, Dublin\",\n    \"end_address\": \"UCD Belfield\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "",
+              "header": [],
+              "cookie": [
+                {
+                  "expires": "Invalid Date",
+                  "domain": "",
+                  "path": ""
+                }
+              ],
+              "body": "{\n  \"code\": 500,\n  \"msg\": \"An unexpected internal server error occurred.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "502 - Bad Gateway: Third-Party Map Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"O'Connell Street, Dublin\",\n    \"end_address\": \"UCD Belfield\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 502,\n  \"msg\": \"Third-party map service error\",\n  \"data\": \"[Specific Google Maps Error Message]\"\n}"
+            },
+            {
+              "name": "504 - Gateway Timeout: Map Service Timeout",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start_address\": \"O'Connell Street, Dublin\",\n    \"end_address\": \"UCD Belfield\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/journey/plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "journey",
+                    "plan"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": null,
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"code\": 504,\n  \"msg\": \"Third-party map service timed out\",\n  \"data\": \"[Timeout Details]\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Journey Module: Calculates the optimal combined walking and cycling route based on starting/ending locations and real-time Dublin Bikes availability."
+    },
+    {
+      "name": "AI Chat",
+      "item": [
+        {
+          "name": "Chat Blocking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"chat_id\": \"test_user_002\",\n    \"message\": \"你好\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chat Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"chat_id\": \"test_user_002\",\n    \"message\": \"你好，请你做一个自我介绍\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/stream",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "stream"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chat history list",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "sessions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chat history",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/api/chat/sessions/{{session_id}}/messages",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "chat",
+                "sessions",
+                "{{session_id}}",
+                "messages"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "",
+      "description": "服务地址"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "description": "注册用户名（3-64 位，仅字母、数字、_、-、.）"
+    },
+    {
+      "key": "email",
+      "value": "",
+      "description": "注册邮箱（自动转小写）"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "description": "密码（注册最少 8 位，登录最少 1 位）"
+    },
+    {
+      "key": "avatar_url",
+      "value": "",
+      "description": "头像地址（可选，最长 255 字符）"
+    },
+    {
+      "key": "identifier",
+      "value": "",
+      "description": "登录/验证标识（用户名或邮箱）"
+    },
+    {
+      "key": "verification_code",
+      "value": "",
+      "description": "6 位验证码（从控制台或邮件获取后手动填写）"
+    },
+    {
+      "key": "activation_token",
+      "value": "",
+      "description": "激活链接 Token（从邮件获取后手动填写）"
+    },
+    {
+      "key": "lat",
+      "value": "",
+      "description": "纬度（默认都柏林 53.3498）"
+    },
+    {
+      "key": "lon",
+      "value": "",
+      "description": "经度（默认都柏林 -6.2603）"
+    },
+    {
+      "key": "station_number",
+      "value": "",
+      "description": "站点编号（Dublin Bikes）"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "description": "注册成功后由 Tests 脚本自动写入"
+    },
+    {
+      "key": "registered_username",
+      "value": "",
+      "description": "注册成功后由 Tests 脚本自动写入"
+    },
+    {
+      "key": "registered_email",
+      "value": "",
+      "description": "注册成功后由 Tests 脚本自动写入"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "description": "登录/刷新成功后由 Tests 脚本自动写入"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "description": "登录/刷新成功后由 Tests 脚本自动写入"
+    },
+    {
+      "key": "token_type",
+      "value": "",
+      "description": "令牌类型，固定为 Bearer"
+    },
+    {
+      "key": "expires_in",
+      "value": "",
+      "description": "access_token 有效期（秒），登录/刷新后自动写入"
+    },
+    {
+      "key": "session_id",
+      "value": ""
+    }
+  ]
+}
