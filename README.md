@@ -1,19 +1,23 @@
 # flask-app
 
-从原项目 `1st-flask-proj` 抽离出的 Flask Web 后端（不包含 scraper）。与同仓下的 **scraper** 共用同一数据库（`station`、`availability` 表），迁移在此维护，scraper 只负责写入数据。
+从原项目 `1st-flask-proj` 抽离出的 Flask Web 后端（不包含 scraper）。与同仓下的 **scraper** 共用同一数据库（如 `station`、`availability` 等表），**数据库迁移在本项目维护**；scraper 主要写入站点与可用性数据，本应用还使用 `user`、`weather_forecast`、`sessions`、`message_store` 等表。
 
-主要功能包括：用户注册/登录（JWT）、邮箱验证、站点与可用性查询、天气预报接口等。
+主要功能包括：用户注册/登录（JWT）、邮箱验证、站点与可用性查询、全站最新状态、**可用车数量预测**（随机森林模型）、天气预报、**路径规划**（Google Maps Geocoding + 服务端路线计算）、**AI 聊天**（阿里云 Qwen，支持 SSE 流式）等。
 
 ### 项目结构概览
 
 | 路径 | 说明 |
 |------|------|
-| `app/` | 应用主包：`api/` 路由、`models/` 数据模型、`services/` 业务逻辑、`schemas/` 序列化、`utils/` 工具 |
-| `config.py` | 配置（从环境变量读取） |
+| `app/` | 应用主包：`api/` 路由、`models/` ORM、`services/` 业务、`contracts/` Pydantic 请求与响应、`schemas/` 遗留校验、`utils/` 工具 |
+| `config.py` | 配置（从环境变量读取；缺少数个必填项会在导入时抛错，见下文） |
 | `run.py` | 本地开发入口（`python run.py`） |
 | `wsgi.py` | WSGI 入口（Gunicorn / Docker 使用） |
+| `entrypoint.sh` | Docker 入口：先 `flask db upgrade`，再启动 Gunicorn（见 `Dockerfile`） |
 | `migrations/` | Flask-Migrate 数据库迁移 |
-| `requirements.txt` | Python 依赖 |
+| `machine_learning/` | 训练 notebook 与线上 `.pkl` 模型（预测接口依赖，CI 会从 Hugging Face 拉取） |
+| `templates/` | 少量 HTML 模板（如邮件相关） |
+| `Jenkinsfile` | Jenkins 流水线（语法检查、测试、镜像、可选部署） |
+| `requirements.txt` | 生产/运行期 Python 依赖（**不含** pytest，见测试章节） |
 
 ---
 
@@ -56,18 +60,29 @@ conda activate flask-app
 cp .env.example .env
 ```
 
-编辑 `.env`，**必填项**如下：
+`.env.example` 中含 **JCDecaux / scraper** 等变量，仅供与同仓 scraper 共用一份模板时使用；**本 Flask 应用运行时可忽略** `JCDECAUX_*`、`SCRAPE_INTERVAL_SECONDS` 等与采集相关的项。
+
+编辑 `.env`。`config.py` 在导入时会**强制要求**以下变量已设置（否则会 `ValueError`）：
 
 | 变量名 | 说明 |
 |--------|------|
 | `DATABASE_URL` | 数据库连接 URL，如 `mysql+pymysql://user:password@localhost:3306/dbname` |
-| `SECRET_KEY` | Flask 会话密钥，建议随机字符串 |
 | `JWT_SECRET_KEY` | JWT Access Token 签名密钥 |
 | `JWT_REFRESH_SECRET_KEY` | JWT Refresh Token 签名密钥 |
-| `OPENWEATHER_API_BASE_URL` | OpenWeatherMap API 基础 URL（如 `https://api.openweathermap.org/data/3.0/onecall`） |
 | `OPENWEATHER_API_KEY` | OpenWeatherMap API Key（[官网](https://openweathermap.org/api) 申请） |
 
-可选：邮箱验证、前端激活链接等见 `.env.example` 内注释。若需在终端直接使用 `flask db upgrade` 而不带 `--app`，可在 `.env` 中增加一行：
+**强烈建议 / 生产环境**：配置 `SECRET_KEY`（Flask 会话等）；虽未在 `config.py` 导入阶段校验，但缺失会降低安全性。
+
+**可选**（有默认值或可缺省，按需配置）：
+
+| 变量名 | 说明 |
+|--------|------|
+| `OPENWEATHER_API_BASE_URL` | 默认 `https://api.openweathermap.org/data/3.0/onecall` |
+| `GOOGLE_MAPS_API_KEY` | `/api/journey/plan` 使用地址文本地理编码时必填；仅坐标模式可不配，但未配置时模块会打印警告 |
+| `ALIYUN_API_KEY` | AI 聊天接口运行时所需 |
+| 邮件 / `FRONTEND_BASE_URL` | 见 `.env.example` 注释 |
+
+若需在终端直接使用 `flask db upgrade` 而不带 `--app`，可在 `.env` 中增加一行：
 
 ```bash
 FLASK_APP=app:create_app
@@ -127,7 +142,7 @@ gunicorn -w 4 -b 127.0.0.1:5000 --worker-class gthread --threads 4 --timeout 120
 
 ## 二、Docker 运行
 
-容器启动后会先执行 `flask db upgrade`，再启动 Gunicorn（`wsgi:app`）。
+镜像启动由 `entrypoint.sh` 执行：先 `flask db upgrade`，再启动 Gunicorn（`wsgi:app`，`--worker-class gthread`、`--preload` 等见脚本）。与本节下方「本地 Gunicorn」示例中的 worker 数量 / 绑定地址可能不同，以 `entrypoint.sh` 为准。
 
 **构建镜像：**
 ```bash
@@ -167,11 +182,13 @@ curl -X POST http://127.0.0.1:5000/api/users/register \
   }'
 ```
 
+其他蓝图前缀（便于对照代码）：`GET /api/stations/`、`GET /api/stations/status`、`GET /api/weather`、`POST /api/journey/plan`、`POST /api/chat`、`POST /api/chat/stream`（聊天需 `Authorization: Bearer <access_token>`）。完整定义见 `app/api/`。
+
 ---
 
 ## 四、单元测试
 
-项目使用 **pytest** 框架，所有测试位于 `tests/` 目录，覆盖率 **97%**（目标 80%+）。测试运行时使用 **SQLite 内存数据库**，无需启动 MySQL 或配置任何外部服务。
+项目使用 **pytest** 框架，所有测试位于 `tests/` 目录；当前 `app` 包语句覆盖率约 **97%**（以 `pytest --cov=app` 为准，会随代码变动）。测试运行时使用 **SQLite 内存数据库**，无需启动 MySQL；`conftest.py` 会在导入应用前注入测试用环境变量，无需自备 `.env`。
 
 ### 1. 目录结构
 
@@ -185,10 +202,10 @@ tests/
 ├── test_station_service.py          # 站点查询服务
 ├── test_weather_service.py          # 天气预报服务
 ├── test_email_utils.py              # 邮件工具函数
-├── test_user_routes.py              # 用户路由 HTTP 层（注册、登录、修改密码等端点）
+├── test_user_routes.py              # 用户路由 HTTP 层（注册、登录、激活、Token、/me 等）
 ├── test_station_routes.py           # 站点路由 HTTP 层
 ├── test_weather_routes.py           # 天气路由 HTTP 层
-├── test_weather_routes_validation.py# 天气路由参数校验辅助函数
+├── test_weather_routes_validation.py # 天气路由参数校验辅助函数
 ├── test_journey_routes.py           # 行程路由 HTTP 层
 ├── test_journey_service.py          # 行程服务：最优路线计算
 ├── test_journey_service_matrix.py   # 行程服务：Google Maps 矩阵时长
@@ -200,7 +217,7 @@ tests/
 
 ### 2. 安装测试依赖
 
-测试依赖已包含在 `requirements.txt` 中。若单独安装：
+`requirements.txt` 面向运行中的 Web 服务，**未包含** `pytest` / `pytest-cov`。本地或 CI 跑测试前请先安装：
 
 ```bash
 pip install pytest pytest-cov
@@ -288,7 +305,7 @@ pytest tests/ --cov=app --cov-report=xml
 | `make_station` | function | 工厂函数：创建并持久化 Station 对象 |
 | `make_availability` | function | 工厂函数：创建并持久化 Availability 对象 |
 | `make_weather_forecast` | function | 工厂函数：创建并持久化 WeatherForecast 对象 |
-| `auth_headers` | function | 返回已登录用户和 JWT Bearer Token 请求头 |
+| `auth_headers` | function | 返回元组 `(user, headers)`，`headers` 含 `Authorization: Bearer …` |
 
 **测试命名约定**
 
@@ -305,22 +322,25 @@ test_get_stations_empty_db_returns_empty_list
 
 ## 五、Jenkins CI/CD
 
-项目使用 Jenkins Pipeline 自动构建和部署。
+项目使用 Kubernetes Agent + Jenkins Pipeline（见仓库根目录 `Jenkinsfile`）。
 
-**流程说明：**
+**流程说明（与 `Jenkinsfile` 阶段一致）：**
 
-1. **拉取代码** - 从 Git 仓库拉取最新代码
-2. **Python 语法检查** - 验证 Python 文件语法
-3. **构建并推送镜像** - 构建 Docker 镜像并推送到 Docker Hub
-4. **部署到 EC2** - main 分支的构建会自动部署到 EC2 服务器
+1. **拉取代码** - 从 Git 仓库拉取当前构建的 SCM 版本  
+2. **Python 语法检查** - 创建 venv，安装依赖，`py_compile` 校验  
+3. **执行测试** - `pytest tests/`，产出 JUnit 报告  
+4. **下载 ML 模型** - 使用凭据从 Hugging Face 拉取 `bike_availability_model.pkl`、`model_features.pkl` 到 `machine_learning/`（供镜像内预测接口使用）  
+5. **构建并推送镜像** - `docker build`，按参数决定是否 `docker push`（`PUSH_IMAGE` 或 `DEPLOY_TO_EC2` 为 true 时会推送）  
+6. **部署到 EC2** - 当分支为 **`main`** 且**非** Pull Request 构建时，将镜像拉取到 EC2 并以 `docker run` 启动（默认 `--network flask-app`，环境文件路径见流水线参数）
 
-**Jenkins 需要的凭据：**
+**Jenkins 需要的凭据（与 `Jenkinsfile` / 参数默认值对应）：**
 
 | 凭据 ID                  | 类型               | 说明                     |
 |--------------------------|-------------------|--------------------------|
 | `docker-hub-credentials` | Username/Password | Docker Hub 登录凭据       |
+| `huggingface-token`      | Secret string     | 下载预测模型用 HF Token   |
 | `aws-ec2`                | Secret text       | EC2 服务器地址            |
-| `server-ssh-key`         | SSH Private Key   | EC2 SSH 私钥             |
+| `server-ssh-key`         | SSH Private Key   | EC2 SSH 私钥（参数可改凭据 ID） |
 | `flask-prod.env`         | Secret file       | 生产环境 .env 文件        |
 
 **EC2 部署前准备：**
