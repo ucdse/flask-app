@@ -81,7 +81,25 @@ spec:
             }
         }
 
-        stage('3. 下载 ML 模型') {
+        stage('3. 执行测试') {
+            steps {
+                container('python') {
+                    sh '''
+                    . .venv/bin/activate
+                    pip install pytest pytest-cov
+                    mkdir -p test-reports
+                    pytest tests/ --junitxml=test-reports/pytest.xml
+                    '''
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'test-reports/pytest.xml', allowEmptyResults: false
+                }
+            }
+        }
+
+        stage('4. 下载 ML 模型') {
             steps {
                 container('python') {
                     withCredentials([
@@ -118,7 +136,7 @@ print('模型下载完成')
             }
         }
 
-        stage('4. 构建并推送 Docker 镜像') {
+        stage('5. 构建并推送 Docker 镜像') {
             when {
                 not { changeRequest() }
             }
@@ -149,7 +167,7 @@ print('模型下载完成')
             }
         }
 
-        stage('5. 部署到 EC2') {
+        stage('6. 部署到 EC2') {
             when {
                 allOf {
                     branch 'main'
