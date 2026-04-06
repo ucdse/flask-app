@@ -10,16 +10,19 @@ import os
 import sys
 
 # ---------------------------------------------------------------------------
-# Provide required env vars BEFORE any application code is imported so
+# Force test env vars BEFORE any application code is imported so
 # config.py does not raise ValueError on missing keys.
+# Use direct assignment (not setdefault) to override any values already
+# exported by the shell or CI, ensuring the suite is always hermetic and
+# never accidentally connects to a real database or external service.
 # ---------------------------------------------------------------------------
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
-os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-12345678")
-os.environ.setdefault("JWT_REFRESH_SECRET_KEY", "test-jwt-refresh-secret-key-12345678")
-os.environ.setdefault("OPENWEATHER_API_KEY", "test-openweather-api-key")
-os.environ.setdefault("GOOGLE_MAPS_API_KEY", "test-google-maps-api-key")
-os.environ.setdefault("ALIYUN_API_KEY", "test-aliyun-api-key")
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-12345678"
+os.environ["JWT_REFRESH_SECRET_KEY"] = "test-jwt-refresh-secret-key-12345678"
+os.environ["OPENWEATHER_API_KEY"] = "test-openweather-api-key"
+os.environ["GOOGLE_MAPS_API_KEY"] = "test-google-maps-api-key"
+os.environ["ALIYUN_API_KEY"] = "test-aliyun-api-key"
 
 from unittest.mock import MagicMock, patch
 
