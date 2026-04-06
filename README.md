@@ -169,7 +169,141 @@ curl -X POST http://127.0.0.1:5000/api/users/register \
 
 ---
 
-## 四、Jenkins CI/CD
+## 四、单元测试
+
+项目使用 **pytest** 框架，所有测试位于 `tests/` 目录，覆盖率 **97%**（目标 80%+）。测试运行时使用 **SQLite 内存数据库**，无需启动 MySQL 或配置任何外部服务。
+
+### 1. 目录结构
+
+```
+tests/
+├── conftest.py                      # 共享 fixtures（测试应用、数据库、工厂函数、鉴权头）
+├── test_utils.py                    # 工具函数：calculateDistance、api_retry
+├── test_contracts.py                # Pydantic DTO / VO 契约校验
+├── test_schemas.py                  # 遗留 user_schema.py 校验器
+├── test_user_service.py             # 用户服务业务逻辑（注册、登录、验证码、刷新 Token 等）
+├── test_station_service.py          # 站点查询服务
+├── test_weather_service.py          # 天气预报服务
+├── test_email_utils.py              # 邮件工具函数
+├── test_user_routes.py              # 用户路由 HTTP 层（注册、登录、修改密码等端点）
+├── test_station_routes.py           # 站点路由 HTTP 层
+├── test_weather_routes.py           # 天气路由 HTTP 层
+├── test_weather_routes_validation.py# 天气路由参数校验辅助函数
+├── test_journey_routes.py           # 行程路由 HTTP 层
+├── test_journey_service.py          # 行程服务：最优路线计算
+├── test_journey_service_matrix.py   # 行程服务：Google Maps 矩阵时长
+├── test_chat_routes.py              # 聊天路由 HTTP 层（SSE 流式 & 普通响应）
+├── test_chat_service.py             # 聊天服务：会话消息、session ID 生成
+├── test_chat_service_llm.py         # 聊天服务：LLM 调用路径（Qwen / OpenAI）
+└── test_prediction_service.py       # 可用性预测服务（随机森林模型）
+```
+
+### 2. 安装测试依赖
+
+测试依赖已包含在 `requirements.txt` 中。若单独安装：
+
+```bash
+pip install pytest pytest-cov
+```
+
+### 3. 执行测试
+
+确保已激活虚拟环境，在项目根目录执行：
+
+**运行全部测试：**
+
+```bash
+pytest tests/
+```
+
+**运行单个测试文件：**
+
+```bash
+pytest tests/test_user_routes.py
+```
+
+**运行单个测试函数：**
+
+```bash
+pytest tests/test_user_routes.py::test_register_success
+```
+
+**显示详细输出（每条测试用例名称）：**
+
+```bash
+pytest tests/ -v
+```
+
+**显示 print 输出（调试时使用）：**
+
+```bash
+pytest tests/ -s
+```
+
+### 4. 查看测试覆盖率
+
+**终端输出覆盖率摘要（含未覆盖行号）：**
+
+```bash
+pytest tests/ --cov=app --cov-report=term-missing
+```
+
+**生成 HTML 覆盖率报告（推荐，可视化查看每行覆盖情况）：**
+
+```bash
+pytest tests/ --cov=app --cov-report=html
+open htmlcov/index.html   # macOS
+# xdg-open htmlcov/index.html  # Linux
+# start htmlcov/index.html     # Windows
+```
+
+**生成 XML 报告（供 CI/CD 工具消费）：**
+
+```bash
+pytest tests/ --cov=app --cov-report=xml
+```
+
+### 5. 测试设计说明
+
+**数据库隔离**
+
+所有测试使用 SQLite 内存数据库（`sqlite:///:memory:`），每条测试结束后通过 `db` fixture 自动回滚并清空所有表，测试间完全隔离，不会影响生产 MySQL 数据库。
+
+**外部依赖 Mock**
+
+| 外部服务 | Mock 方式 |
+|----------|-----------|
+| Google Maps API | 在 `conftest.py` 中 patch `googlemaps.Client`，返回 `MagicMock` |
+| Qwen / OpenAI LLM | 在各 LLM 测试中 patch `openai.OpenAI` |
+| SMTP 邮件发送 | Flask 配置 `MAIL_SUPPRESS_SEND=True`，发送 executor 另行 patch |
+
+**共享 Fixtures（`conftest.py`）**
+
+| Fixture | 作用域 | 说明 |
+|---------|--------|------|
+| `app` | session | 创建测试用 Flask 应用实例（含内存数据库） |
+| `db` | function | 提供数据库会话，测试后自动清理 |
+| `client` | function | Flask 测试客户端，用于 HTTP 路由测试 |
+| `make_user` | function | 工厂函数：创建并持久化 User 对象 |
+| `make_station` | function | 工厂函数：创建并持久化 Station 对象 |
+| `make_availability` | function | 工厂函数：创建并持久化 Availability 对象 |
+| `make_weather_forecast` | function | 工厂函数：创建并持久化 WeatherForecast 对象 |
+| `auth_headers` | function | 返回已登录用户和 JWT Bearer Token 请求头 |
+
+**测试命名约定**
+
+测试函数遵循 `test_<操作>_<条件>_<期望结果>` 的命名规则，例如：
+
+```
+test_register_success
+test_register_duplicate_email_returns_409
+test_login_wrong_password_returns_401
+test_get_stations_empty_db_returns_empty_list
+```
+
+---
+
+## 五、Jenkins CI/CD
 
 项目使用 Jenkins Pipeline 自动构建和部署。
 
