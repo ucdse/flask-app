@@ -46,4 +46,14 @@ def create_app() -> Flask:
 
     register_blueprints(app)
 
+    # 在应用启动时进行预加载（Pre-warming）
+    with app.app_context():
+        from .services.prediction_service import _load_model
+        import logging
+        try:
+            _load_model()
+            logging.info("🚲 Bike prediction model correctly preloaded.")
+        except Exception as e:
+            logging.error(f"⚠️ Failed to preload prediction model: {e}")
+
     return app
