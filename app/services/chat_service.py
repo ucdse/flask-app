@@ -243,4 +243,4 @@ def generate_chat_stream(session_id: str, user_message: str, user_id: int):
 
     except Exception:
         logger.exception("Stream generation failed")
-        yield f"data: {json.dumps({'error': '服务暂时不可用，请稍后重试'}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'error': 'Service temporarily unavailable, please try again later'}, ensure_ascii=False)}\n\n"

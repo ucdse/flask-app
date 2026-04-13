@@ -80,7 +80,7 @@ def chat():
             jsonify(
                 {
                     "code": 50000,
-                    "msg": "服务暂时不可用，请稍后重试",
+                    "msg": "Service temporarily unavailable, please try again later",
                     "data": None,
                 }
             ),
@@ -139,7 +139,7 @@ def list_sessions():
     data = [
         {
             "session_id": s.id,
-            "title": s.title or "新对话",
+            "title": s.title or "New Chat",
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
         for s in sessions
