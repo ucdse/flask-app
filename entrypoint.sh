@@ -1,15 +1,15 @@
 #!/bin/sh
 
-# 遇到错误立即退出
+# Exit immediately on error
 set -e
 
-# 1. 应用数据库迁移 (只执行 upgrade，不执行 migrate)
+# 1. Apply database migrations (only run upgrade, not migrate)
 echo "Running DB migrations..."
 flask db upgrade
 
-# 2. 启动 Gunicorn
+# 2. Start Gunicorn
 echo "Starting Gunicorn..."
-# exec 能够让 gunicorn 替换当前 shell 进程，接收系统信号
-# gthread 多线程模式：适合长时间 I/O（如 SSE 流式输出），避免单请求霸占进程导致超时
-# --preload：在 Master 进程中提前加载应用（含 ML 模型），Worker fork 后共享内存，避免每个 Worker 各自加载一份模型
+# exec allows gunicorn to replace the current shell process and receive system signals
+# gthread multi-threaded mode: suitable for long-running I/O (e.g., SSE streaming), prevents a single request from monopolizing the process and causing timeout
+# --preload: load the application (including ML model) in the Master process early, workers fork and share memory, avoiding each worker loading its own copy of the model
 exec gunicorn -w 2 -b 0.0.0.0:5000 --worker-class gthread --threads 4 --timeout 120 --preload --access-logfile - wsgi:app

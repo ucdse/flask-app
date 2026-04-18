@@ -10,39 +10,39 @@ from app.extensions import db
 class User(db.Model):
     __tablename__ = "user"
 
-    # 自增主键 ID
+    # Auto-incrementing primary key ID
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # 用户名：唯一且建立索引，方便快速查找
+    # Username: unique and indexed for fast lookups
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
 
-    # 邮箱：唯一且建立索引，用于登录或找回密码
+    # Email: unique and indexed, used for login or password recovery
     email: Mapped[str] = mapped_column(String(120), unique=True, index=True)
 
-    # 密码哈希值：注意永远不要存储明文密码，预留足够的长度 (如 128 或 256) 存储 hash 字符串
+    # Password hash: never store plaintext passwords, reserve sufficient length (e.g. 128 or 256) for hash strings
     password_hash: Mapped[str] = mapped_column(String(256))
 
-    # 头像 URL (可选)
+    # Avatar URL (optional)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # 账户状态：是否激活 (例如邮箱验证后为 True)；新注册用户默认为未激活
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="账户是否激活；0=禁用，1=激活")
+    # Account status: whether activated (e.g. True after email verification); new users default to inactive
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="Whether account is activated; 0=disabled, 1=activated")
 
-    # 邮箱验证码：注册/重发时生成 6 位数字，激活后清空；仅最新一次有效；暂不发邮件，仅输出到控制台
+    # Email verification code: 6-digit code generated on registration/resend, cleared after activation; only the latest one is valid; emails not sent yet, only printed to console
     email_verification_code: Mapped[Optional[str]] = mapped_column(String(6), nullable=True)
-    # 验证码过期时间（如 5 分钟后）；激活时校验
+    # Verification code expiration time (e.g. 5 minutes later); validated on activation
     email_verification_code_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    # 最近一次发送验证码的时间，用于限频（如每分钟最多请求一次）
+    # Last time verification code was sent, used for rate limiting (e.g. max once per minute)
     email_verification_code_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    # 激活链接用 Token：邮件中带 /activate/:token，点击即激活；与验证码同效、同过期
+    # Activation token: sent in email as /activate/:token, clicking activates; equivalent to and expires with verification code
     activation_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True, index=True)
-    # 令牌版本号：logout 时递增，使旧 access/refresh token 立即失效
+    # Token version number: increments on logout to immediately invalidate old access/refresh tokens
     token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    # 创建时间：使用数据库层面的默认值 (server_default)
+    # Creation time: uses database-level default value (server_default)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    # 更新时间：每次更新记录时自动刷新时间
+    # Update time: automatically refreshed each time the record is updated
     updated_at: Mapped[datetime] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
     def __repr__(self) -> str:

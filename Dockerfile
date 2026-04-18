@@ -1,22 +1,22 @@
-# Flask 应用镜像：启动时自动执行 db upgrade，再启动 Gunicorn
+# Flask application image: automatically run db upgrade on startup, then start Gunicorn
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# 安装依赖
+# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 应用代码（含 entrypoint.sh）
+# Application code (including entrypoint.sh)
 COPY . .
 
-# 入口脚本必须在 COPY . . 之后赋予执行权限，否则会被覆盖
+# Entrypoint script must be given execute permissions after COPY . . , otherwise it will be overwritten
 RUN chmod +x entrypoint.sh
 
-# 通过环境变量指定 Flask 应用（也可在运行时覆盖）
+# Specify Flask application via environment variable (can also be overridden at runtime)
 ENV FLASK_APP=app:create_app
 
 EXPOSE 5000
 
-# 使用脚本作为入口：先 upgrade 再启动 Gunicorn
+# Use script as entry: first upgrade then start Gunicorn
 ENTRYPOINT ["./entrypoint.sh"]

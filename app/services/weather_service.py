@@ -1,4 +1,4 @@
-"""天气预报服务，从数据库获取天气数据。"""
+"""Weather forecast service, retrieves weather data from database."""
 
 from datetime import datetime, timezone
 from typing import Any
@@ -7,7 +7,7 @@ from app.models.weather import WeatherForecast
 
 
 class WeatherAPIError(Exception):
-    """天气预报数据库查询错误。"""
+    """Weather forecast database query error."""
     def __init__(self, message: str = "weather API error", status_code: int = 500) -> None:
         super().__init__(message)
         self.message = message
@@ -16,14 +16,14 @@ class WeatherAPIError(Exception):
 
 def get_weather() -> dict[str, Any]:
     """
-    从数据库获取都柏林未来的天气预报数据。
+    Retrieves Dublin weather forecast data from database.
     
     Returns:
-        天气预报数据字典，模拟原 API 的结构，包含 current 和 hourly
+        Weather forecast data dictionary, simulating original API structure, containing current and hourly
     """
     try:
         now = datetime.utcnow()
-        # 查询大于等于当前小时的天气，按时间排序，取前 6 条 (包含当前小时 + 未来5小时)
+        # Query weather data for hours >= current hour, sorted by time, limit 6 records (current hour + next 5 hours)
         forecasts = WeatherForecast.query.filter(
             WeatherForecast.forecast_time >= now.replace(minute=0, second=0, microsecond=0)
         ).order_by(WeatherForecast.forecast_time.asc()).limit(6).all()
@@ -33,7 +33,7 @@ def get_weather() -> dict[str, Any]:
             
         current = forecasts[0]
         
-        # 组装为前端期望的格式 (模拟 OneCall API)
+        # Assemble into format expected by frontend (simulating OneCall API)
         return {
             "current": {
                 "dt": int(current.forecast_time.replace(tzinfo=timezone.utc).timestamp()),

@@ -5,29 +5,29 @@ from app.extensions import db
 
 class WeatherForecast(db.Model):
     """
-    存储天气预报的小时级数据。
-    主要用于缓存/存储都柏林未来的预报，避免频繁调用外部 API。
+    Stores hourly weather forecast data.
+    Mainly used for caching/storing Dublin's future forecasts to avoid frequently calling external APIs.
     """
     __tablename__ = "weather_forecast"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     
-    # 预报目标时间 (例如 2023-10-01 14:00:00)
+    # Forecast target time (e.g. 2023-10-01 14:00:00)
     forecast_time = db.Column(db.DateTime, unique=True, index=True, nullable=False)
     
-    # 摄氏度
+    # Temperature in Celsius
     temperature = db.Column(db.Float, nullable=False)
     
-    # 天气状态码 (如 800 代表晴朗)
+    # Weather status code (e.g. 800 means clear)
     weather_code = db.Column(db.Integer, nullable=False)
     
-    # 天气描述 (如 "scattered clouds")
+    # Weather description (e.g. "scattered clouds")
     description = db.Column(db.String(100), nullable=True)
     
     # Optional: ICON code (e.g. "01d", "10n")
     icon = db.Column(db.String(20), nullable=True)
 
-    # 追加的关键气象指标
+    # Additional key meteorological indicators
     feels_like = db.Column(db.Float, nullable=True)
     pressure = db.Column(db.Integer, nullable=True)
     humidity = db.Column(db.Integer, nullable=True)
@@ -38,7 +38,7 @@ class WeatherForecast(db.Model):
     wind_deg = db.Column(db.Integer, nullable=True)
     pop = db.Column(db.Float, nullable=True, default=0.0)
 
-    # Scraper 抓取这条数据的时间
+    # Time when this data was scraped
     fetched_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
