@@ -7,24 +7,24 @@ from app.extensions import db
 class Station(db.Model):
     __tablename__ = "station"
 
-    # 使用 API 里的 number (例如 42) 作为主键，因为它本身就是唯一的
+    # Use the number from the API (e.g. 42) as primary key since it is already unique
     number: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     contract_name: Mapped[str] = mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(100))
     address: Mapped[str] = mapped_column(String(200))
 
-    # 把 JSON 里的 position: {lat, lng} 拆成两个字段
+    # Split the position: {lat, lng} from JSON into two fields
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
 
-    # 是否支持现场银行卡/信用卡支付 (JCDecaux API: banking)。0=不支持，1=支持
-    banking: Mapped[bool] = mapped_column(Boolean, comment="是否支持现场银行卡/信用卡支付；0=不支持，1=支持")
-    # 是否为奖励站点，如还车可获额外时长等 (JCDecaux API: bonus)。0=否，1=是
-    bonus: Mapped[bool] = mapped_column(Boolean, comment="是否为奖励站点（还车可获额外时长等）；0=否，1=是")
-    bike_stands: Mapped[int] = mapped_column(Integer)  # 总车桩数量
+    # Whether on-site card/credit card payment is supported (JCDecaux API: banking). 0=not supported, 1=supported
+    banking: Mapped[bool] = mapped_column(Boolean, comment="Whether on-site card/credit card payment is supported; 0=not supported, 1=supported")
+    # Whether it is a bonus station, e.g. returning bikes grants extra duration (JCDecaux API: bonus). 0=no, 1=yes
+    bonus: Mapped[bool] = mapped_column(Boolean, comment="Whether it is a bonus station (returning bikes grants extra duration, etc.); 0=no, 1=yes")
+    bike_stands: Mapped[int] = mapped_column(Integer)  # Total number of bike stands
 
-    # 建立关系，方便通过 Station.availabilities 查历史数据
+    # Establish relationship for easy access to historical data via Station.availabilities
     availabilities = relationship("Availability", back_populates="station", cascade="all, delete")
 
     def __repr__(self) -> str:

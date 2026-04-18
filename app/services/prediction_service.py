@@ -9,20 +9,20 @@ from app.extensions import db
 from app.models.station import Station
 from app.models.weather import WeatherForecast
 
-# 全局变量缓存模型
+# Global variable to cache the model
 _model = None
 _features = None
 
 def _load_model() -> None:
     global _model, _features
-    # 如果已经加载过，就直接返回
+    # If already loaded, return directly
     if _model is not None and _features is not None:
         return
 
-    # 获取 app 包所在目录 (通常为 flask-app/app)
+    # Get the directory where the app package is located (usually flask-app/app)
     base_dir = current_app.root_path
     
-    # 回退一层进入 flask-app 然后进入 machine_learning 目录寻找 .pkl
+    # Go back one level to flask-app then enter machine_learning directory to find .pkl
     model_path = os.path.join(base_dir, '..', 'machine_learning', 'bike_availability_model.pkl')
     features_path = os.path.join(base_dir, '..', 'machine_learning', 'model_features.pkl')
 
@@ -47,16 +47,16 @@ class PredictionError(Exception):
 
 def get_station_predictions(station_id: int) -> List[Dict[str, Any]]:
     """
-    获取某个站点基于缓存天气预报的可用单车预测结果。
+    Get available bike predictions for a station based on cached weather forecasts.
     """
     _load_model()
 
-    # 1. 获取车站固定信息（容量、经纬度）
+    # 1. Get station fixed information (capacity, lat/lon)
     station = db.session.get(Station, station_id)
     if not station:
         raise PredictionError(f"Station {station_id} not found")
 
-    # 2. 从数据库查询自当前整点起的所有未来天气预报
+    # 2. Query all future weather forecasts from the current hour from the database
     now = datetime.utcnow()
     forecasts = WeatherForecast.query.filter(
         WeatherForecast.forecast_time >= now.replace(minute=0, second=0, microsecond=0)
@@ -65,14 +65,14 @@ def get_station_predictions(station_id: int) -> List[Dict[str, Any]]:
     if not forecasts:
         raise PredictionError("No weather forecast data available to make predictions")
 
-    # 3. 构造批量预测所需的特征
+    # 3. Construct features required for batch prediction
     input_rows = []
     for f in forecasts:
         dt = f.forecast_time
         day_of_week = dt.weekday() # 0-6 corresponding to Monday-Sunday
         is_weekend = 1 if day_of_week >= 5 else 0
 
-        # DataFrame 中需要的完整字典，对应模型特征列表
+        # Complete dictionary required in DataFrame, corresponding to model feature list
         row = {
             'station_id': station.number,
             'capacity': station.bike_stands,
@@ -88,19 +88,19 @@ def get_station_predictions(station_id: int) -> List[Dict[str, Any]]:
         }
         input_rows.append(row)
 
-    # 严格按照 _features 的列名和顺序进行重排
+    # Reorder strictly according to _features column names and order
     df_input = pd.DataFrame(input_rows)[_features]
 
-    # 采用随机森林进行批量预测（即使是 24-48 小时的预测，也仅需 ~1 毫秒）
+    # Use random forest for batch prediction (even for 24-48 hour predictions, it takes only ~1 millisecond)
     predictions = _model.predict(df_input)
 
-    # 4. 组装并返回结果
+    # 4. Assemble and return results
     result = []
     for idx, f in enumerate(forecasts):
-        # 预测出的小数进行四舍五入并强制转换整型
+        # Round the predicted decimals and forcefully convert to integer
         predicted_bikes = int(round(predictions[idx]))
         
-        # 修正：单车可用数量不可能小于0或多于车站的最大容量
+        # Correction: available bikes count cannot be less than 0 or more than station's maximum capacity
         predicted_bikes = max(0, min(predicted_bikes, station.bike_stands))
 
         result.append({

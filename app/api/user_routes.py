@@ -32,7 +32,7 @@ user_bp = Blueprint("user", __name__, url_prefix="/api/users")
 
 
 def _validation_error_message(exc: ValidationError) -> str:
-    """从 Pydantic ValidationError 取第一条错误信息。"""
+    """Extract the first error message from Pydantic ValidationError."""
     errors = exc.errors()
     if not errors:
         return "invalid request"
@@ -69,7 +69,7 @@ def register():
 
 @user_bp.post("/send-verification-code")
 def send_code():
-    """请求发送验证码：请求体 { "identifier": "用户名或邮箱" }。未激活用户每分钟最多请求一次；仅最新验证码有效。"""
+    """Request sending verification code: request body { "identifier": "username or email" }. Unactivated users can request at most once per minute; only the latest verification code is valid."""
     payload = request.get_json(silent=True) or {}
     try:
         dto = SendVerificationCodeRequestDTO.model_validate(payload)
@@ -84,7 +84,7 @@ def send_code():
 
 @user_bp.post("/activate")
 def activate():
-    """激活账户：请求体 { "identifier": "用户名或邮箱", "code": "6位验证码" }，验证码匹配则设为已激活。"""
+    """Activate account: request body { "identifier": "username or email", "code": "6-digit verification code" }, matching verification code sets the account as activated."""
     payload = request.get_json(silent=True) or {}
     try:
         dto = ActivateRequestDTO.model_validate(payload)
@@ -99,7 +99,7 @@ def activate():
 
 @user_bp.post("/activate-by-token")
 def activate_by_token_route():
-    """通过邮件中的激活链接 Token 激活账户：请求体 { "token": "..." }。"""
+    """Activate account via activation link token in email: request body { "token": "..." }."""
     payload = request.get_json(silent=True) or {}
     try:
         dto = ActivateByTokenRequestDTO.model_validate(payload)
@@ -114,7 +114,7 @@ def activate_by_token_route():
 
 @user_bp.post("/login")
 def login():
-    """登录：请求体 { "identifier": "用户名或邮箱", "password": "密码" }，返回 access_token 与 refresh_token。"""
+    """Login: request body { "identifier": "username or email", "password": "password" }, returns access_token and refresh_token."""
     payload = request.get_json(silent=True) or {}
     try:
         dto = LoginRequestDTO.model_validate(payload)
@@ -129,7 +129,7 @@ def login():
 
 @user_bp.post("/refresh")
 def refresh():
-    """使用 refresh_token 换取新的 access_token 与 refresh_token。请求体 { "refresh_token": "..." }。"""
+    """Use refresh_token to exchange for new access_token and refresh_token. Request body { "refresh_token": "..." }."""
     payload = request.get_json(silent=True) or {}
     try:
         dto = RefreshTokenRequestDTO.model_validate(payload)
@@ -144,7 +144,7 @@ def refresh():
 
 @user_bp.post("/logout")
 def logout():
-    """登出：需要携带有效 access_token，服务端将当前用户 token_version 递增并使旧 token 失效。"""
+    """Logout: requires a valid access_token, the server will increment the current user's token_version and invalidate the old token."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.strip().lower().startswith("bearer "):
         return jsonify({"code": 40101, "msg": "missing or invalid Authorization header", "data": None}), 401
@@ -158,7 +158,7 @@ def logout():
 
 @user_bp.get("/me")
 def me():
-    """需要携带有效 access_token：请求头 Authorization: Bearer <access_token>，返回当前用户信息。"""
+    """Requires a valid access_token: request header Authorization: Bearer <access_token>, returns current user information."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.strip().lower().startswith("bearer "):
         return jsonify({"code": 40101, "msg": "missing or invalid Authorization header", "data": None}), 401

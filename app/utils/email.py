@@ -1,4 +1,4 @@
-"""邮件发送工具，使用 Flask-Mail 发送验证码等。异步发送不阻塞请求。"""
+"""Email sending utility using Flask-Mail to send verification codes, etc. Asynchronous sending does not block requests."""
 
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -6,10 +6,10 @@ from typing import Optional
 
 import config
 
-# 后台线程池，用于异步发邮件，不阻塞请求
+# Background thread pool for asynchronous email sending, does not block requests
 _email_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="email-send")
 
-# HTML 邮件模板路径
+# HTML email template path
 _TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 _VERIFICATION_TEMPLATE = os.path.join(_TEMPLATE_DIR, "email_verification.html")
 
@@ -17,7 +17,7 @@ _VERIFICATION_TEMPLATE = os.path.join(_TEMPLATE_DIR, "email_verification.html")
 def _render_verification_html(
     code: str, expires_minutes: int, activation_link: str = ""
 ) -> str:
-    """读取 HTML 模板并填充验证码、过期时间与激活链接。"""
+    """Read HTML template and fill in verification code, expiration time, and activation link."""
     with open(_VERIFICATION_TEMPLATE, "r", encoding="utf-8") as f:
         html = f.read()
     html = html.replace("{code}", code).replace("{expires_minutes}", str(expires_minutes))
@@ -35,7 +35,7 @@ def _render_verification_html(
 
 
 def _mail_configured() -> bool:
-    """是否已配置邮件（MAIL_SERVER 与发件人必填）。"""
+    """Check if email is configured (MAIL_SERVER and sender are required)."""
     return bool(
         config.MAIL_SERVER
         and config.MAIL_FROM
@@ -48,8 +48,8 @@ def _send_verification_code_with_flask_mail(
     app, to_email: str, code: str, expires_minutes: int, activation_token: Optional[str] = None
 ) -> None:
     """
-    在应用上下文中使用 Flask-Mail 发送验证码邮件（HTML + 纯文本双格式）。
-    若提供 activation_token，邮件中会包含「点击激活」链接。
+    Send verification code email using Flask-Mail in application context (HTML + plain-text dual format).
+    If activation_token is provided, the email will include a 'click to activate' link.
     """
     if not _mail_configured():
         return
@@ -78,9 +78,9 @@ def _send_verification_code_with_flask_mail(
         msg = Message(subject=subject, recipients=[to_email], body=body, html=html_body)
         try:
             mail.send(msg)
-            print(f"[邮箱验证] Flask-Mail 发送成功 to={to_email}")
+            print(f"[Email Verification] Flask-Mail sent successfully to={to_email}")
         except Exception as e:
-            print(f"[邮箱验证] Flask-Mail 发送失败 to={to_email} error={e!r}")
+            print(f"[Email Verification] Flask-Mail failed to send to={to_email} error={e!r}")
 
 
 def send_verification_code_email_async(
@@ -90,8 +90,8 @@ def send_verification_code_email_async(
     activation_token: Optional[str] = None,
 ) -> None:
     """
-    异步发送验证码邮件：提交到线程池后立即返回，不阻塞当前请求。
-    若提供 activation_token，邮件中会包含激活链接 /activate/:token。
+    Asynchronously send verification code email: returns immediately after submitting to thread pool, does not block current request.
+    If activation_token is provided, the email will include activation link /activate/:token.
     """
     if not _mail_configured():
         return

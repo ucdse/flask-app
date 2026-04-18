@@ -33,7 +33,7 @@ def create_app() -> Flask:
     app.config["MAIL_PASSWORD"] = MAIL_PASSWORD
     app.config["MAIL_DEFAULT_SENDER"] = MAIL_DEFAULT_SENDER
 
-    # 阿里云 Qwen（聊天）
+    # Aliyun Qwen (chat)
     app.config["ALIYUN_API_KEY"] = ALIYUN_API_KEY
 
     db.init_app(app)
@@ -46,7 +46,7 @@ def create_app() -> Flask:
 
     register_blueprints(app)
 
-    # 在应用启动时进行预加载（Pre-warming）
+    # Pre-warm the application on startup
     with app.app_context():
         from .services.prediction_service import _load_model
         import logging

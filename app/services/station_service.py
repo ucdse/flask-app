@@ -20,8 +20,12 @@ def _availability_to_dict(availability: Availability) -> dict[str, Any]:
         "available_bike_stands": availability.available_bike_stands,
         "status": availability.status,
         "last_update": availability.last_update,
-        "timestamp": availability.timestamp.isoformat() if availability.timestamp else None,
-        "requested_at": availability.requested_at.isoformat() if availability.requested_at else None,
+        "timestamp": availability.timestamp.isoformat()
+        if availability.timestamp
+        else None,
+        "requested_at": availability.requested_at.isoformat()
+        if availability.requested_at
+        else None,
     }
 
 
@@ -40,11 +44,15 @@ def _station_to_dict(station: Station) -> dict[str, Any]:
 
 
 def list_stations() -> list[dict[str, Any]]:
-    stations = db.session.execute(db.select(Station).order_by(Station.number)).scalars().all()
+    stations = (
+        db.session.execute(db.select(Station).order_by(Station.number)).scalars().all()
+    )
     return [_station_to_dict(station) for station in stations]
 
 
-def get_recent_station_availability(number: int, lookback: timedelta = timedelta(days=1)) -> list[dict[str, Any]]:
+def get_recent_station_availability(
+    number: int, lookback: timedelta = timedelta(days=1)
+) -> list[dict[str, Any]]:
     station = db.session.get(Station, number)
     if station is None:
         raise StationNotFoundError()
@@ -61,12 +69,12 @@ def get_recent_station_availability(number: int, lookback: timedelta = timedelta
 
 
 def get_all_stations_latest_availability() -> list[dict[str, Any]]:
-    # 1. 找出每個站點最新的 Availability ID
+    # 1. Find the latest Availability ID for each station
     subquery = db.select(func.max(Availability.id)).group_by(Availability.number)
-    
-    # 2. 根據這些最新的 ID 撈出完整的紀錄
+
+    # 2. Fetch the complete records based on these latest IDs
     stmt = db.select(Availability).where(Availability.id.in_(subquery))
     rows = db.session.execute(stmt).scalars().all()
-    
-    # 3. 沿用團隊原本的轉換函數，保持回傳格式完全一致
+
+    # 3. Reuse the team's original conversion function to keep the return format completely consistent
     return [_availability_to_dict(availability) for availability in rows]

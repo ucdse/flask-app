@@ -1,4 +1,4 @@
-# 不打包进镜像
+# Do not package into image
 .env
 .venv
 venv

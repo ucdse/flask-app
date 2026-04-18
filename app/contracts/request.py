@@ -1,4 +1,4 @@
-"""请求 DTO（Data Transfer Objects），用于 API 入参校验与结构化。"""
+"""Request DTOs (Data Transfer Objects) for API input validation and structuring."""
 
 import re
 from typing import Annotated
@@ -13,7 +13,7 @@ USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 class UserRegistrationRequestDTO(BaseModel):
-    """用户注册请求体。"""
+    """User registration request body."""
 
     username: Annotated[str, Field(min_length=3, max_length=64)]
     email: Annotated[str, Field(max_length=120)]
@@ -56,7 +56,7 @@ class UserRegistrationRequestDTO(BaseModel):
 
 
 class LoginRequestDTO(BaseModel):
-    """登录请求体：identifier（用户名或邮箱）+ password。"""
+    """Login request body: identifier (username or email) + password."""
 
     identifier: Annotated[str, Field(min_length=1, max_length=120)]
     password: Annotated[str, Field(min_length=1)]
@@ -68,7 +68,7 @@ class LoginRequestDTO(BaseModel):
 
 
 class RefreshTokenRequestDTO(BaseModel):
-    """刷新令牌请求体。"""
+    """Refresh token request body."""
 
     refresh_token: Annotated[str, Field(min_length=1)]
 
@@ -79,7 +79,7 @@ class RefreshTokenRequestDTO(BaseModel):
 
 
 class ActivateRequestDTO(BaseModel):
-    """激活账户请求体：identifier + 6 位验证码。"""
+    """Account activation request body: identifier + 6-digit verification code."""
 
     identifier: Annotated[str, Field(min_length=1, max_length=120)]
     code: Annotated[str, Field(min_length=6, max_length=6)]
@@ -92,7 +92,7 @@ class ActivateRequestDTO(BaseModel):
     @field_validator("code", mode="before")
     @classmethod
     def code_strip(cls, v: str) -> str:
-        # 接受数值类型验证码，兼容之前 str(code).strip() 的行为
+        # Accept numeric verification code, compatible with previous str(code).strip() behavior
         return str(v).strip()
 
     @field_validator("code")
@@ -104,7 +104,7 @@ class ActivateRequestDTO(BaseModel):
 
 
 class SendVerificationCodeRequestDTO(BaseModel):
-    """发送验证码请求体：identifier（用户名或邮箱）。"""
+    """Verification code sending request body: identifier (username or email)."""
 
     identifier: Annotated[str, Field(min_length=1, max_length=120)]
 
@@ -115,7 +115,7 @@ class SendVerificationCodeRequestDTO(BaseModel):
 
 
 class ActivateByTokenRequestDTO(BaseModel):
-    """通过邮件链接 Token 激活请求体。"""
+    """Account activation request body via email link token."""
 
     token: Annotated[str, Field(min_length=1)]
 
@@ -129,7 +129,7 @@ class ActivateByTokenRequestDTO(BaseModel):
 
 
 class WeatherQueryDTO(BaseModel):
-    """天气查询参数：经纬度。"""
+    """Weather query parameters: latitude and longitude."""
 
-    lat: float = Field(..., description="纬度")
-    lon: float = Field(..., description="经度")
+    lat: float = Field(..., description="Latitude")
+    lon: float = Field(..., description="Longitude")

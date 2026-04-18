@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_chat_history(session_id: str):
-    """动态获取对应 session_id 的数据库记忆对象，复用 Flask-SQLAlchemy 的 engine，避免每次请求重建连接池。"""
+    """Dynamically get the database memory object for the given session_id, reusing the Flask-SQLAlchemy engine to avoid rebuilding the connection pool on every request."""
     return SQLChatMessageHistory(
         session_id=session_id,
         connection=db.engine,
@@ -27,20 +27,20 @@ def get_chat_history(session_id: str):
 
 def _ensure_session(session_id: str, user_id: int) -> Session:
     """
-    确保 sessions 表中存在一条当前会话记录，并更新 updated_at。
-    - 若不存在则创建（仅包含 id 和 user_id）
-    - 若已存在则只刷新 updated_at
+    Ensure a current session record exists in the sessions table and update updated_at.
+    - Create if it doesn't exist (only id and user_id)
+    - If it already exists, only refresh updated_at
     """
     session = db.session.get(Session, session_id)
     if session is None:
         session = Session(id=session_id, user_id=user_id)
         db.session.add(session)
-    # 显式刷新最近更新时间，便于按 updated_at 排序
+    # Explicitly refresh the recent update time for sorting by updated_at
     session.updated_at = Session.utcnow()
     try:
         db.session.commit()
     except IntegrityError:
-        # 并发创建同一 session 时，回退并复用已落库的记录，避免把首条消息打成 500。
+        # When concurrently creating the same session, rollback and reuse the persisted record to avoid returning 500 for the first message.
         db.session.rollback()
         session = db.session.get(Session, session_id)
         if session is None or session.user_id != user_id:
@@ -52,20 +52,17 @@ def _ensure_session(session_id: str, user_id: int) -> Session:
 
 def generate_session_id(user_id: int, chat_id: str) -> str:
     """
-    根据前端提供的 chat_id 生成真正用于存储的 session_id。
+    Generate the actual session_id for storage based on the chat_id provided by the frontend.
 
-    当前设计下，前端只维护 chat_id，后端总是根据 user_id + chat_id 计算唯一的 session_id，
-    不再尝试把 chat_id 当成已有会话主键进行复用。
+    In the current design, the frontend only maintains chat_id, and the backend always calculates
+    a unique session_id from user_id + chat_id, no longer trying to reuse chat_id as an existing session primary key.
     """
     if not isinstance(chat_id, str):
         chat_id = str(chat_id)
 
     prefix = f"user_{user_id}_chat_"
     candidate = f"{prefix}{chat_id}"
-    if (
-        len(candidate) <= 64
-        and re.fullmatch(r"[A-Za-z0-9_.-]+", chat_id) is not None
-    ):
+    if len(candidate) <= 64 and re.fullmatch(r"[A-Za-z0-9_.-]+", chat_id) is not None:
         return candidate
 
     digest = hashlib.sha256(chat_id.encode("utf-8")).hexdigest()[:32]
@@ -73,7 +70,7 @@ def generate_session_id(user_id: int, chat_id: str) -> str:
 
 
 def _generate_title(session_id: str, first_message: str) -> None:
-    """根据第一条用户消息生成会话标题，写入 sessions 表（仅在当前尚无标题时设置一次）。"""
+    """Generate session title from the first user message and write it to the sessions table (only set once if no title currently exists)."""
     try:
         llm = ChatOpenAI(
             api_key=current_app.config["ALIYUN_API_KEY"],
@@ -81,7 +78,7 @@ def _generate_title(session_id: str, first_message: str) -> None:
             model="qwen-plus",
         )
         prompt = (
-            "用6个字以内概括这句话的主题，只输出标题，不加标点："
+            "Summarize the topic of this sentence in 6 words or less, output only the title without punctuation: "
             f"{first_message[:200]}"
         )
         title = llm.invoke(prompt).content.strip()[:50]
@@ -97,12 +94,12 @@ def _generate_title(session_id: str, first_message: str) -> None:
 
 def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]] | None:
     """
-    获取指定会话的历史消息列表（仅限当前用户的会话）。
-    - 会话不存在或不属于当前用户时返回 None
-    - 会话存在但暂无消息时返回 []
-    - 正常情况返回按时间顺序排列的 [{role, content}, ...]
+    Get the historical message list for the specified session (current user's sessions only).
+    - Returns None if the session does not exist or does not belong to the current user
+    - Returns [] if the session exists but has no messages yet
+    - Normally returns [{role, content}, ...] in chronological order
     """
-    # 先确认会话归属，避免越权访问
+    # First confirm session ownership to prevent unauthorized access
     session = db.session.get(Session, session_id)
     if session is None or session.user_id != user_id:
         return None
@@ -120,7 +117,7 @@ def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]] 
             return "user"
         if msg_type == "ai":
             return "assistant"
-        # 兼容 system / tool 等其他类型
+        # Compatible with system / tool and other types
         if msg_type in {"system", "tool"}:
             return msg_type
         return msg_type or "assistant"
@@ -131,7 +128,7 @@ def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]] 
         data = msg.get("data") or {}
         content = data.get("content") or ""
         if not isinstance(content, str):
-            # LangChain 规范中 content 应该是字符串，异常情况做一次 string 化
+            # In LangChain spec, content should be a string; do a string conversion in exception cases
             content = str(content)
         history.append(
             {
@@ -144,34 +141,37 @@ def get_session_messages(session_id: str, user_id: int) -> list[dict[str, str]] 
 
 
 def generate_chat_response(session_id: str, user_message: str, user_id: int) -> str:
-    """处理核心对话逻辑（非流式），并维护 sessions 表与标题生成。"""
+    """Handle core dialogue logic (non-streaming), and maintain sessions table and title generation."""
 
-    # 检查是否为当前 session 的第一条消息（基于 message_store）
+    # Check if this is the first message for the current session (based on message_store)
     is_first_message = not db.session.execute(
         db.text("SELECT 1 FROM message_store WHERE session_id = :sid LIMIT 1"),
         {"sid": session_id},
     ).fetchone()
 
-    # 确保 sessions 表中存在会话记录，并更新最近使用时间
+    # Ensure session record exists in sessions table and update last used time
     _ensure_session(session_id, user_id)
 
-    # 初始化模型
+    # Initialize model
     llm = ChatOpenAI(
         api_key=current_app.config["ALIYUN_API_KEY"],
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         model="qwen-plus",
     )
 
-    # 组装 Prompt
+    # Assemble Prompt
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", "你是一个得力的智能助手，请根据上下文回答问题。"),
+            (
+                "system",
+                "You are a helpful intelligent assistant. Please answer questions based on the context.",
+            ),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{user_input}"),
         ]
     )
 
-    # 组装 Chain 并外挂记忆模块
+    # Assemble Chain and attach memory module
     chain = prompt | llm
     chain_with_history = RunnableWithMessageHistory(
         chain,
@@ -180,13 +180,13 @@ def generate_chat_response(session_id: str, user_message: str, user_id: int) -> 
         history_messages_key="chat_history",
     )
 
-    # 调用模型
+    # Invoke model
     response = chain_with_history.invoke(
         {"user_input": user_message},
         config={"configurable": {"session_id": session_id}},
     )
 
-    # 如果是第一条消息，生成标题（一次性）
+    # If this is the first message, generate the title (one-time only)
     if is_first_message:
         _generate_title(session_id, user_message)
 
@@ -194,16 +194,16 @@ def generate_chat_response(session_id: str, user_message: str, user_id: int) -> 
 
 
 def generate_chat_stream(session_id: str, user_message: str, user_id: int):
-    """流式处理核心对话逻辑 (Generator)，并维护 sessions 表与标题生成。"""
+    """Stream process core dialogue logic (Generator), and maintain sessions table and title generation."""
 
     try:
-        # 检查是否为当前 session 的第一条消息（基于 message_store）
+        # Check if this is the first message for the current session (based on message_store)
         is_first_message = not db.session.execute(
             db.text("SELECT 1 FROM message_store WHERE session_id = :sid LIMIT 1"),
             {"sid": session_id},
         ).fetchone()
 
-        # 确保 sessions 表中存在会话记录，并更新最近使用时间
+        # Ensure session record exists in sessions table and update last used time
         _ensure_session(session_id, user_id)
 
         llm = ChatOpenAI(
@@ -214,7 +214,10 @@ def generate_chat_stream(session_id: str, user_message: str, user_id: int):
 
         prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", "你是一个得力的智能助手，请根据上下文回答问题。"),
+                (
+                    "system",
+                    "You are a helpful intelligent assistant. Please answer questions based on the context.",
+                ),
                 MessagesPlaceholder(variable_name="chat_history"),
                 ("human", "{user_input}"),
             ]
@@ -237,7 +240,7 @@ def generate_chat_stream(session_id: str, user_message: str, user_id: int):
 
         yield "data: [DONE]\n\n"
 
-        # 流式结束后，如果是第一条消息则生成标题
+        # After streaming ends, if this is the first message, generate the title
         if is_first_message:
             _generate_title(session_id, user_message)
 

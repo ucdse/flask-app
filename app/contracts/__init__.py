@@ -1,4 +1,4 @@
-"""API 请求 DTO 与响应 VO，基于 Pydantic。"""
+"""API Request DTOs and Response VOs, based on Pydantic."""
 
 from app.contracts.request import (
     ActivateByTokenRequestDTO,

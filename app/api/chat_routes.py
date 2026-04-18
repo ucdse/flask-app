@@ -18,7 +18,7 @@ chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
 
 def _require_auth():
-    """要求请求携带有效 access_token，成功返回 (payload, None)，失败返回 (None, (response, status_code))。"""
+    """Require the request to carry a valid access_token, returns (payload, None) on success, or (None, (response, status_code)) on failure."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.strip().lower().startswith("bearer "):
         return None, (jsonify({"error": "missing or invalid Authorization header"}), 401)
@@ -121,8 +121,8 @@ def chat_stream_api():
 @chat_bp.route("/sessions", methods=["GET"])
 def list_sessions():
     """
-    返回当前用户的历史会话列表。
-    认证方式与聊天接口一致：需要携带 Authorization: Bearer <access_token>。
+    Return the current user's historical session list.
+    Authentication method is the same as the chat endpoint: requires Authorization: Bearer <access_token>.
     """
     payload, err = _require_auth()
     if err is not None:
@@ -151,8 +151,8 @@ def list_sessions():
 @chat_bp.route("/sessions/<path:session_id>/messages", methods=["GET"])
 def get_session_history(session_id: str):
     """
-    获取指定 session 的历史对话记录。
-    需要携带 Authorization: Bearer <access_token>，并且只能访问自己的会话。
+    Get historical conversation records for the specified session.
+    Requires Authorization: Bearer <access_token>, and can only access your own sessions.
     """
     payload, err = _require_auth()
     if err is not None:
@@ -162,7 +162,7 @@ def get_session_history(session_id: str):
 
     messages = get_session_messages(session_id, user_id)
     if messages is None:
-        # 会话不存在或不属于当前用户
+        # Session does not exist or does not belong to the current user
         return (
             jsonify(
                 {

@@ -1,4 +1,4 @@
-"""响应 VO（View Objects），用于 API 返回数据结构化。"""
+"""Response VOs (View Objects) for structuring API return data."""
 
 from typing import Any
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class UserVO(BaseModel):
-    """用户信息响应。"""
+    """User information response."""
 
     id: int
     username: str
@@ -20,7 +20,7 @@ class UserVO(BaseModel):
 
 
 class AuthTokenVO(BaseModel):
-    """登录/刷新令牌响应。"""
+    """Login/refresh token response."""
 
     access_token: str
     refresh_token: str
@@ -29,7 +29,7 @@ class AuthTokenVO(BaseModel):
 
 
 class SendVerificationCodeMessageVO(BaseModel):
-    """发送验证码成功响应。"""
+    """Verification code sent response."""
 
     message: str = "verification code sent"
 
@@ -38,7 +38,7 @@ class SendVerificationCodeMessageVO(BaseModel):
 
 
 class WeatherDataVO(BaseModel):
-    """天气 API 返回数据（OpenWeatherMap 结构，允许额外字段）。"""
+    """Weather API response data (OpenWeatherMap structure, allows extra fields)."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -50,7 +50,7 @@ class WeatherDataVO(BaseModel):
 
 
 class StationVO(BaseModel):
-    """站点信息响应。"""
+    """Station information response."""
 
     number: int
     contract_name: str
@@ -64,7 +64,7 @@ class StationVO(BaseModel):
 
 
 class AvailabilityVO(BaseModel):
-    """站点可用性记录响应。"""
+    """Station availability record response."""
 
     number: int
     available_bikes: int

@@ -55,7 +55,7 @@ def validate_user_registration(payload: Any) -> dict[str, str | None]:
 
 
 def validate_login_request(payload: Any) -> dict[str, str]:
-    """校验登录请求体：identifier（用户名或邮箱）+ password。"""
+    """Validate login request body: identifier (username or email) + password."""
     if not isinstance(payload, dict):
         raise UserSchemaError("Request body must be a JSON object.")
 
@@ -74,7 +74,7 @@ def validate_login_request(payload: Any) -> dict[str, str]:
 
 
 def validate_refresh_request(payload: Any) -> dict[str, str]:
-    """校验刷新令牌请求体：refresh_token。"""
+    """Validate refresh token request body: refresh_token."""
     if not isinstance(payload, dict):
         raise UserSchemaError("Request body must be a JSON object.")
 
@@ -88,7 +88,7 @@ def validate_refresh_request(payload: Any) -> dict[str, str]:
 
 
 def validate_activate_request(payload: Any) -> dict[str, str]:
-    """校验激活请求体：identifier（用户名或邮箱）+ code（6 位验证码）。"""
+    """Validate activation request body: identifier (username or email) + code (6-digit verification code)."""
     if not isinstance(payload, dict):
         raise UserSchemaError("Request body must be a JSON object.")
 
@@ -110,7 +110,7 @@ def validate_activate_request(payload: Any) -> dict[str, str]:
 
 
 def validate_send_verification_code_request(payload: Any) -> dict[str, str]:
-    """校验发送验证码请求体：identifier（用户名或邮箱）。"""
+    """Validate send verification code request body: identifier (username or email)."""
     if not isinstance(payload, dict):
         raise UserSchemaError("Request body must be a JSON object.")
 
@@ -125,7 +125,7 @@ def validate_send_verification_code_request(payload: Any) -> dict[str, str]:
 
 
 def validate_activate_by_token_request(payload: Any) -> dict[str, str]:
-    """校验通过 Token 激活的请求体：token（邮件链接中的 token）。"""
+    """Validate token-based activation request body: token (from email link)."""
     if not isinstance(payload, dict):
         raise UserSchemaError("Request body must be a JSON object.")
 

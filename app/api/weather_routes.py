@@ -1,4 +1,4 @@
-"""天气预报API路由。"""
+"""Weather forecast API routes."""
 
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
@@ -24,10 +24,10 @@ def _validation_error_message(exc: ValidationError) -> str:
 @weather_bp.get("")
 def get_weather_forecast():
     """
-    获取天气预报 (统一预报)。
+    Get weather forecast (unified forecast).
 
-    返回:
-        JSON响应，包含天气预报数据
+    Returns:
+        JSON response containing weather forecast data.
     """
     try:
         raw_data = get_weather()

@@ -14,7 +14,7 @@ station_bp = Blueprint("station", __name__, url_prefix="/api/stations")
 
 @station_bp.get("/")
 def list_stations():
-    """返回所有站点信息。"""
+    """Return information for all stations."""
     raw_list = list_stations_service()
     data = [StationVO.model_validate(s).model_dump() for s in raw_list]
     return jsonify({"code": 0, "msg": "ok", "data": data}), 200
@@ -22,7 +22,7 @@ def list_stations():
 
 @station_bp.get("/<int:number>/availability")
 def get_station_availability(number: int):
-    """根据站点 number 返回最近一天内的 availability 记录。"""
+    """Return availability records for the given station number within the last day."""
     try:
         raw_list = get_recent_station_availability(number)
     except StationNotFoundError as exc:
@@ -32,7 +32,7 @@ def get_station_availability(number: int):
 
 @station_bp.get("/status")
 def get_all_stations_status():
-    """返回所有站點的最新即時狀態"""
+    """Return the latest real-time status for all stations."""
     raw_list = get_all_stations_latest_availability()
     
     data = [AvailabilityVO.model_validate(a).model_dump() for a in raw_list]
@@ -40,7 +40,7 @@ def get_all_stations_status():
 
 @station_bp.get("/<int:number>/prediction")
 def get_station_prediction(number: int):
-    """返回该站点未来一段时间的预测可用车辆数量"""
+    """Return the predicted available bikes for this station over a future period."""
     try:
         data = get_station_predictions(number)
         return jsonify({"code": 0, "msg": "ok", "data": data}), 200
