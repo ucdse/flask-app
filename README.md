@@ -1,175 +1,223 @@
-# flask-app
+# 🚀 Dublin Bikes Flask App
 
-从原项目 `1st-flask-proj` 抽离出的 Flask Web 后端（不包含 scraper）。与同仓下的 **scraper** 共用同一数据库（如 `station`、`availability` 等表），**数据库迁移在本项目维护**；scraper 主要写入站点与可用性数据，本应用还使用 `user`、`weather_forecast`、`sessions`、`message_store` 等表。
+**English** | [🌐 中文](./README_zh.md)
 
-主要功能包括：用户注册/登录（JWT）、邮箱验证、站点与可用性查询、全站最新状态、**可用车数量预测**（随机森林模型）、天气预报、**路径规划**（Google Maps Geocoding + 服务端路线计算）、**AI 聊天**（阿里云 Qwen，支持 SSE 流式）等。
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.1-green.svg)](https://flask.palletsprojects.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+[![Jenkins CI](https://img.shields.io/badge/Jenkins-CI/CD-red.svg)](https://www.jenkins.io/)
 
-### 项目结构概览
-
-| 路径 | 说明 |
-|------|------|
-| `app/` | 应用主包：`api/` 路由、`models/` ORM、`services/` 业务、`contracts/` Pydantic 请求与响应、`schemas/` 遗留校验、`utils/` 工具 |
-| `config.py` | 配置（从环境变量读取；缺少数个必填项会在导入时抛错，见下文） |
-| `run.py` | 本地开发入口（`python run.py`） |
-| `wsgi.py` | WSGI 入口（Gunicorn / Docker 使用） |
-| `entrypoint.sh` | Docker 入口：先 `flask db upgrade`，再启动 Gunicorn（见 `Dockerfile`） |
-| `migrations/` | Flask-Migrate 数据库迁移 |
-| `machine_learning/` | 训练 notebook 与线上 `.pkl` 模型（预测接口依赖，CI 会从 Hugging Face 拉取） |
-| `templates/` | 少量 HTML 模板（如邮件相关） |
-| `Jenkinsfile` | Jenkins 流水线（语法检查、测试、镜像、可选部署） |
-| `requirements.txt` | 生产/运行期 Python 依赖（**不含** pytest，见测试章节） |
+**Dublin Bikes Flask App** is a ✨ feature-rich ✨ Flask web backend for the Dublin public bike sharing system. Extracted from the original `1st-flask-proj` project (excluding the scraper), it shares the same database with the companion scraper in the same repository (tables such as `station`, `availability`, etc.). Database migrations are maintained in this project; the scraper primarily writes station and availability data, while this application also uses `user`, `weather_forecast`, `sessions`, and `message_store` tables.
 
 ---
 
-## 一、本地运行（不用 Docker）
+## 📋 Table of Contents
 
-在本地机器上直接运行，适合开发与调试。
+- [✨ Features](#-features)
+- [📁 Project Structure](#-project-structure)
+- [🚀 Getting Started](#-getting-started)
+  - [🔧 Prerequisites](#-prerequisites)
+  - [📦 Installation](#-installation)
+  - [⚙️ Configuration](#%EF%B8%8F-configuration)
+- [💻 Usage](#-usage)
+  - [Run Locally (without Docker)](#run-locally-without-docker)
+  - [Run with Docker](#run-with-docker)
+  - [🔧 Troubleshooting](#-troubleshooting)
+- [📡 API Examples](#-api-examples)
+- [🧪 Testing](#-testing)
+  - [Test Directory Structure](#test-directory-structure)
+  - [Install Test Dependencies](#install-test-dependencies)
+  - [Run Tests](#run-tests)
+  - [View Test Coverage](#view-test-coverage)
+  - [Test Design Notes](#test-design-notes)
+- [🔄 CI/CD (Jenkins)](#-cicd-jenkins)
+- [🤝 Contributing](#-contributing)
+- [📝 License](#-license)
+- [📧 Contact](#-contact)
 
-### 1. 环境要求
+---
 
-- **Anaconda 或 Miniconda**：已安装 [Anaconda](https://www.anaconda.com/) 或 [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
-- **Python**：3.10 或以上（推荐 3.12，与 Docker 镜像一致），由 conda 环境提供
-- **数据库**：MySQL（或与 `DATABASE_URL` 兼容的数据库），需事先创建好数据库
-- **可选**：若需邮件验证码，需可用的 SMTP 配置；否则验证码仅输出到控制台
+## ✨ Features
 
-### 2. 使用 Anaconda 创建并激活虚拟环境（推荐）
+- **🔐 User Authentication**: Registration, login (JWT), email verification, and token refresh
+- **🚲 Station & Availability**: Query bike stations, availability data, and latest status across all stations
+- **🤖 ML Prediction**: Bike availability prediction powered by a Random Forest model
+- **🌤️ Weather Forecast**: Real-time weather data via OpenWeatherMap API
+- **🗺️ Route Planning**: Server-side route calculation with Google Maps Geocoding
+- **💬 AI Chat**: Intelligent chatbot powered by Alibaba Cloud Qwen (supports SSE streaming)
+- **🐳 Docker Support**: Production-ready containerisation with auto-migration on startup
+- **🔄 CI/CD Pipeline**: Full Jenkins pipeline with syntax checks, testing, Docker build, and EC2 deployment
+
+---
+
+## 📁 Project Structure
+
+| Path | Description |
+|------|-------------|
+| `app/` | Main application package: `api/` routes, `models/` ORM, `services/` business logic, `contracts/` Pydantic request/response DTOs, `schemas/` legacy validators, `utils/` utilities |
+| `config.py` | Configuration (reads from environment variables; missing required keys raise `ValueError` on import) |
+| `run.py` | Local development entry point (`python run.py`) |
+| `wsgi.py` | WSGI entry point (used by Gunicorn / Docker) |
+| `entrypoint.sh` | Docker entrypoint: runs `flask db upgrade` first, then starts Gunicorn (see `Dockerfile`) |
+| `migrations/` | Flask-Migrate database migrations |
+| `machine_learning/` | Training notebook and production `.pkl` model (prediction endpoint depends on it; CI pulls from Hugging Face) |
+| `templates/` | A small number of HTML templates (e.g. email-related) |
+| `Jenkinsfile` | Jenkins pipeline (syntax check → tests → Docker image → optional deploy) |
+| `requirements.txt` | Production/runtime Python dependencies (**does not** include pytest; see Testing section) |
+
+---
+
+## 🚀 Getting Started
+
+### 🔧 Prerequisites
+
+- **Anaconda or Miniconda**: [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) installed
+- **Python**: 3.10+ (3.12 recommended, consistent with the Docker image), provided by conda environment
+- **Database**: MySQL (or any database compatible with `DATABASE_URL`), created beforehand
+- **Optional**: Working SMTP config for email verification codes; otherwise codes are printed to the console only
+
+### 📦 Installation
+
+1. **Clone the repository**:
 
 ```bash
-# 进入项目目录
-cd /path/to/flask-app
+git clone https://github.com/ucdse/flask-app.git
+cd flask-app
+```
 
-# 使用 conda 创建虚拟环境（指定 Python 版本，如 3.12）
+2. **Create and activate a conda virtual environment** (recommended):
+
+```bash
+# Create virtual environment (specify Python version, e.g. 3.12)
 conda create -n flask-app python=3.12 -y
 
-# 激活虚拟环境
+# Activate the virtual environment
 # macOS / Linux:
 conda activate flask-app
-# Windows (CMD):
-# conda activate flask-app
-# Windows (PowerShell):
+# Windows (CMD / PowerShell):
 # conda activate flask-app
 ```
 
-激活后终端提示符前会显示 `(flask-app)`。退出环境使用 `conda deactivate`。
+After activation, your terminal prompt will show `(flask-app)`. To exit the environment, use `conda deactivate`.
 
-### 3. 配置环境变量
-
-复制示例文件并按需修改：
-
-```bash
-cp .env.example .env
-```
-
-`.env.example` 中含 **JCDecaux / scraper** 等变量，仅供与同仓 scraper 共用一份模板时使用；**本 Flask 应用运行时可忽略** `JCDECAUX_*`、`SCRAPE_INTERVAL_SECONDS` 等与采集相关的项。
-
-编辑 `.env`。`config.py` 在导入时会**强制要求**以下变量已设置（否则会 `ValueError`）：
-
-| 变量名 | 说明 |
-|--------|------|
-| `DATABASE_URL` | 数据库连接 URL，如 `mysql+pymysql://user:password@localhost:3306/dbname` |
-| `JWT_SECRET_KEY` | JWT Access Token 签名密钥 |
-| `JWT_REFRESH_SECRET_KEY` | JWT Refresh Token 签名密钥 |
-| `OPENWEATHER_API_KEY` | OpenWeatherMap API Key（[官网](https://openweathermap.org/api) 申请） |
-
-**强烈建议 / 生产环境**：配置 `SECRET_KEY`（Flask 会话等）；虽未在 `config.py` 导入阶段校验，但缺失会降低安全性。
-
-**可选**（有默认值或可缺省，按需配置）：
-
-| 变量名 | 说明 |
-|--------|------|
-| `OPENWEATHER_API_BASE_URL` | 默认 `https://api.openweathermap.org/data/3.0/onecall` |
-| `GOOGLE_MAPS_API_KEY` | `/api/journey/plan` 使用地址文本地理编码时必填；仅坐标模式可不配，但未配置时模块会打印警告 |
-| `ALIYUN_API_KEY` | AI 聊天接口运行时所需 |
-| 邮件 / `FRONTEND_BASE_URL` | 见 `.env.example` 注释 |
-
-若需在终端直接使用 `flask db upgrade` 而不带 `--app`，可在 `.env` 中增加一行：
-
-```bash
-FLASK_APP=app:create_app
-```
-
-### 4. 安装依赖
+3. **Install dependencies**:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. 执行数据库迁移
+### ⚙️ Configuration
 
-与 scraper 共用数据库时，**必须先在本项目执行迁移**：
+Copy the example file and edit as needed:
+
+```bash
+cp .env.example .env
+```
+
+> **Note**: `.env.example` contains `JCDECAUX_*` and `SCRAPE_INTERVAL_SECONDS` variables shared with the scraper template. These can be **ignored** when running this Flask application.
+
+Edit `.env`. The following variables are **required** (`config.py` will raise `ValueError` if missing):
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Database connection URL, e.g. `mysql+pymysql://user:password@localhost:3306/dbname` |
+| `JWT_SECRET_KEY` | JWT Access Token signing key |
+| `JWT_REFRESH_SECRET_KEY` | JWT Refresh Token signing key |
+| `OPENWEATHER_API_KEY` | OpenWeatherMap API key ([apply here](https://openweathermap.org/api)) |
+
+**Strongly recommended / Production**: Set `SECRET_KEY` (used by Flask sessions etc.). Although not enforced at import time, missing it reduces security.
+
+**Optional** variables (have defaults or can be omitted):
+
+| Variable | Description |
+|----------|-------------|
+| `OPENWEATHER_API_BASE_URL` | Default: `https://api.openweathermap.org/data/3.0/onecall` |
+| `GOOGLE_MAPS_API_KEY` | Required for `/api/journey/plan` address text geocoding; coordinate-only mode works without it but prints a warning |
+| `ALIYUN_API_KEY` | Required by the AI chat endpoint at runtime |
+| Mail / `FRONTEND_BASE_URL` | See `.env.example` comments |
+
+To use `flask db upgrade` directly without `--app`, add this line to `.env`:
+
+```bash
+FLASK_APP=app:create_app
+```
+
+---
+
+## 💻 Usage
+
+### Run Locally (without Docker)
+
+**1. Run database migrations** (must be done in this project before the scraper when sharing a database):
 
 ```bash
 flask --app app:create_app db upgrade
 ```
 
-若已在 `.env` 中设置 `FLASK_APP=app:create_app`，可简写为：
+Or, if `FLASK_APP=app:create_app` is set in `.env`:
 
 ```bash
 flask db upgrade
 ```
 
-### 6. 启动服务
+**2. Start the server**:
 
-**开发模式**（带调试、自动重载）：
+**Development mode** (with debug and auto-reload):
 
 ```bash
 python run.py
 ```
 
-默认监听 `http://127.0.0.1:5000`。
+Listens at `http://127.0.0.1:5000` by default.
 
-**生产方式**（本地用 Gunicorn 多进程 + 多线程，适合 SSE 流式输出与高并发）：
+**Production mode** (local Gunicorn with multi-worker + multi-thread, suitable for SSE streaming and high concurrency):
 
 ```bash
 gunicorn -w 4 -b 127.0.0.1:5000 --worker-class gthread --threads 4 --timeout 120 wsgi:app
 ```
 
-### 本地运行常见问题
+### Run with Docker
 
-- **`ValueError: DATABASE_URL 环境变量未设置`**  
-  确保项目根目录存在 `.env`，且其中已填写 `DATABASE_URL=...`（可参考 `.env.example`）。若在虚拟环境外运行，请先 `conda activate flask-app` 再执行命令。
+The container entrypoint (`entrypoint.sh`) runs `flask db upgrade` first, then starts Gunicorn (`wsgi:app` with `--worker-class gthread` and `--preload`; see the script for exact worker count / bind address).
 
-- **`ValueError: JWT_SECRET_KEY / OPENWEATHER_API_KEY 未设置`**  
-  在 `.env` 中补全 `JWT_SECRET_KEY`、`JWT_REFRESH_SECRET_KEY` 和 `OPENWEATHER_API_KEY`。
+**Build the image:**
 
-- **`flask: command not found`**  
-  先激活 conda 环境（`conda activate flask-app`），或使用 `python -m flask --app app:create_app db upgrade`。
-
-- **数据库连接失败**  
-  检查 MySQL 是否已启动、数据库是否已创建、`DATABASE_URL` 中的主机/端口/用户名/密码/库名是否正确。
-
----
-
-## 二、Docker 运行
-
-镜像启动由 `entrypoint.sh` 执行：先 `flask db upgrade`，再启动 Gunicorn（`wsgi:app`，`--worker-class gthread`、`--preload` 等见脚本）。与本节下方「本地 Gunicorn」示例中的 worker 数量 / 绑定地址可能不同，以 `entrypoint.sh` 为准。
-
-**构建镜像：**
 ```bash
 docker build -t flask-app .
 ```
 
-**运行 Flask 应用：**
+**Run the Flask application:**
+
 ```bash
 docker run --rm --env-file .env -p 5000:5000 flask-app
 ```
 
-**加入 Docker 网络（生产环境推荐）：**
+**Join a Docker network** (recommended for production):
+
 ```bash
-# 先创建网络（如尚未创建）
+# Create the network (if not already created)
 docker network create flask-app
 
-# 运行时加入网络
+# Run with network
 docker run -d --name flask-app --network flask-app --env-file .env -p 5000:5000 flask-app
 ```
 
-需在镜像同目录准备 `.env`（含 `DATABASE_URL`、`SECRET_KEY` 等），或改用 `-e DATABASE_URL=...` 传环境变量。
+A `.env` file (containing `DATABASE_URL`, `SECRET_KEY`, etc.) must be present in the same directory, or use `-e DATABASE_URL=...` to pass environment variables directly.
+
+### 🔧 Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| `ValueError: DATABASE_URL environment variable is not set` | Ensure `.env` exists in the project root with `DATABASE_URL=...` (see `.env.example`). Activate the conda environment first. |
+| `ValueError: JWT_SECRET_KEY / OPENWEATHER_API_KEY is not set` | Add `JWT_SECRET_KEY`, `JWT_REFRESH_SECRET_KEY`, and `OPENWEATHER_API_KEY` to `.env`. |
+| `flask: command not found` | Activate the conda environment (`conda activate flask-app`), or use `python -m flask --app app:create_app db upgrade`. |
+| Database connection failure | Check that MySQL is running, the database has been created, and the host/port/user/password/db name in `DATABASE_URL` are correct. |
 
 ---
 
-## 三、API 示例
+## 📡 API Examples
 
-### 用户注册接口
+### User Registration
 
 ```bash
 curl -X POST http://127.0.0.1:5000/api/users/register \
@@ -182,134 +230,147 @@ curl -X POST http://127.0.0.1:5000/api/users/register \
   }'
 ```
 
-其他蓝图前缀（便于对照代码）：`GET /api/stations/`、`GET /api/stations/status`、`GET /api/weather`、`POST /api/journey/plan`、`POST /api/chat`、`POST /api/chat/stream`（聊天需 `Authorization: Bearer <access_token>`）。完整定义见 `app/api/`。
+### Other Available Endpoints
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|--------------|-------------|
+| `GET` | `/api/stations/` | No | List all stations |
+| `GET` | `/api/stations/status` | No | Latest status across all stations |
+| `GET` | `/api/weather` | No | Weather forecast |
+| `POST` | `/api/journey/plan` | No | Route planning |
+| `POST` | `/api/chat` | Yes | AI chat (standard response) |
+| `POST` | `/api/chat/stream` | Yes | AI chat (SSE streaming) |
+
+> Chat endpoints require `Authorization: Bearer <access_token>` header.
+
+For the full API definition, see `app/api/`.
 
 ---
 
-## 四、单元测试
+## 🧪 Testing
 
-项目使用 **pytest** 框架，所有测试位于 `tests/` 目录；当前 `app` 包语句覆盖率约 **97%**（以 `pytest --cov=app` 为准，会随代码变动）。测试运行时使用 **SQLite 内存数据库**，无需启动 MySQL；`conftest.py` 会在导入应用前注入测试用环境变量，无需自备 `.env`。
+The project uses the **pytest** framework. All tests are in the `tests/` directory; current `app` package statement coverage is approximately **97%** (per `pytest --cov=app`, subject to code changes). Tests run against an **SQLite in-memory database**, so no running MySQL instance is required. `conftest.py` injects test environment variables before importing the app, so no `.env` is needed for testing.
 
-### 1. 目录结构
+### Test Directory Structure
 
 ```
 tests/
-├── conftest.py                      # 共享 fixtures（测试应用、数据库、工厂函数、鉴权头）
-├── test_utils.py                    # 工具函数：calculateDistance、api_retry
-├── test_contracts.py                # Pydantic DTO / VO 契约校验
-├── test_schemas.py                  # 遗留 user_schema.py 校验器
-├── test_user_service.py             # 用户服务业务逻辑（注册、登录、验证码、刷新 Token 等）
-├── test_station_service.py          # 站点查询服务
-├── test_weather_service.py          # 天气预报服务
-├── test_email_utils.py              # 邮件工具函数
-├── test_user_routes.py              # 用户路由 HTTP 层（注册、登录、激活、Token、/me 等）
-├── test_station_routes.py           # 站点路由 HTTP 层
-├── test_weather_routes.py           # 天气路由 HTTP 层
-├── test_weather_routes_validation.py # 天气路由参数校验辅助函数
-├── test_journey_routes.py           # 行程路由 HTTP 层
-├── test_journey_service.py          # 行程服务：最优路线计算
-├── test_journey_service_matrix.py   # 行程服务：Google Maps 矩阵时长
-├── test_chat_routes.py              # 聊天路由 HTTP 层（SSE 流式 & 普通响应）
-├── test_chat_service.py             # 聊天服务：会话消息、session ID 生成
-├── test_chat_service_llm.py         # 聊天服务：LLM 调用路径（Qwen / OpenAI）
-└── test_prediction_service.py       # 可用性预测服务（随机森林模型）
+├── conftest.py                      # Shared fixtures (test app, database, factory functions, auth headers)
+├── test_utils.py                    # Utility functions: calculateDistance, api_retry
+├── test_contracts.py                # Pydantic DTO / VO contract validation
+├── test_schemas.py                  # Legacy user_schema.py validator tests
+├── test_user_service.py             # User service logic (register, login, verification code, token refresh, etc.)
+├── test_station_service.py          # Station query service
+├── test_weather_service.py          # Weather forecast service
+├── test_email_utils.py              # Email utility functions
+├── test_user_routes.py              # User route HTTP layer (register, login, activate, token, /me, etc.)
+├── test_station_routes.py           # Station route HTTP layer
+├── test_weather_routes.py           # Weather route HTTP layer
+├── test_weather_routes_validation.py # Weather route parameter validation helpers
+├── test_journey_routes.py           # Journey route HTTP layer
+├── test_journey_service.py          # Journey service: optimal route calculation
+├── test_journey_service_matrix.py   # Journey service: Google Maps matrix duration
+├── test_chat_routes.py              # Chat route HTTP layer (SSE streaming & standard response)
+├── test_chat_service.py             # Chat service: conversation messages, session ID generation
+├── test_chat_service_llm.py         # Chat service: LLM call paths (Qwen / OpenAI)
+└── test_prediction_service.py       # Availability prediction service (Random Forest model)
 ```
 
-### 2. 安装测试依赖
+### Install Test Dependencies
 
-`requirements.txt` 面向运行中的 Web 服务，**未包含** `pytest` / `pytest-cov`。本地或 CI 跑测试前请先安装：
+`requirements.txt` targets the running web service and does **not** include `pytest` / `pytest-cov`. Install them before running tests locally or in CI:
 
 ```bash
 pip install pytest pytest-cov
 ```
 
-### 3. 执行测试
+### Run Tests
 
-确保已激活虚拟环境，在项目根目录执行：
+Ensure the virtual environment is activated, then run from the project root:
 
-**运行全部测试：**
+**Run all tests:**
 
 ```bash
 pytest tests/
 ```
 
-**运行单个测试文件：**
+**Run a single test file:**
 
 ```bash
 pytest tests/test_user_routes.py
 ```
 
-**运行单个测试函数：**
+**Run a single test function:**
 
 ```bash
 pytest tests/test_user_routes.py::test_register_success
 ```
 
-**显示详细输出（每条测试用例名称）：**
+**Show verbose output (each test case name):**
 
 ```bash
 pytest tests/ -v
 ```
 
-**显示 print 输出（调试时使用）：**
+**Show print output (for debugging):**
 
 ```bash
 pytest tests/ -s
 ```
 
-### 4. 查看测试覆盖率
+### View Test Coverage
 
-**终端输出覆盖率摘要（含未覆盖行号）：**
+**Terminal output with uncovered line numbers:**
 
 ```bash
 pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-**生成 HTML 覆盖率报告（推荐，可视化查看每行覆盖情况）：**
+**Generate HTML coverage report** (recommended for visual per-line inspection):
 
 ```bash
 pytest tests/ --cov=app --cov-report=html
-open htmlcov/index.html   # macOS
-# xdg-open htmlcov/index.html  # Linux
-# start htmlcov/index.html     # Windows
+open htmlcov/index.html          # macOS
+# xdg-open htmlcov/index.html    # Linux
+# start htmlcov/index.html        # Windows
 ```
 
-**生成 XML 报告（供 CI/CD 工具消费）：**
+**Generate XML report** (for CI/CD consumption):
 
 ```bash
 pytest tests/ --cov=app --cov-report=xml
 ```
 
-### 5. 测试设计说明
+### Test Design Notes
 
-**数据库隔离**
+**Database Isolation**
 
-所有测试使用 SQLite 内存数据库（`sqlite:///:memory:`），每条测试结束后通过 `db` fixture 自动回滚并清空所有表，测试间完全隔离，不会影响生产 MySQL 数据库。
+All tests use an SQLite in-memory database (`sqlite:///:memory:`). After each test, the `db` fixture automatically rolls back and clears all tables — tests are fully isolated and never affect the production MySQL database.
 
-**外部依赖 Mock**
+**External Dependency Mocking**
 
-| 外部服务 | Mock 方式 |
-|----------|-----------|
-| Google Maps API | 在 `conftest.py` 中 patch `googlemaps.Client`，返回 `MagicMock` |
-| Qwen / OpenAI LLM | 在各 LLM 测试中 patch `openai.OpenAI` |
-| SMTP 邮件发送 | Flask 配置 `MAIL_SUPPRESS_SEND=True`，发送 executor 另行 patch |
+| External Service | Mock Approach |
+|-----------------|---------------|
+| Google Maps API | Patched in `conftest.py` — `googlemaps.Client` returns `MagicMock` |
+| Qwen / OpenAI LLM | Patched per LLM test — `openai.OpenAI` |
+| SMTP Email Sending | Flask config `MAIL_SUPPRESS_SEND=True`; send executor patched separately |
 
-**共享 Fixtures（`conftest.py`）**
+**Shared Fixtures (`conftest.py`)**
 
-| Fixture | 作用域 | 说明 |
-|---------|--------|------|
-| `app` | session | 创建测试用 Flask 应用实例（含内存数据库） |
-| `db` | function | 提供数据库会话，测试后自动清理 |
-| `client` | function | Flask 测试客户端，用于 HTTP 路由测试 |
-| `make_user` | function | 工厂函数：创建并持久化 User 对象 |
-| `make_station` | function | 工厂函数：创建并持久化 Station 对象 |
-| `make_availability` | function | 工厂函数：创建并持久化 Availability 对象 |
-| `make_weather_forecast` | function | 工厂函数：创建并持久化 WeatherForecast 对象 |
-| `auth_headers` | function | 返回元组 `(user, headers)`，`headers` 含 `Authorization: Bearer …` |
+| Fixture | Scope | Description |
+|---------|-------|-------------|
+| `app` | session | Creates test Flask app instance (with in-memory database) |
+| `db` | function | Provides database session; auto-cleanup after test |
+| `client` | function | Flask test client for HTTP route tests |
+| `make_user` | function | Factory function: creates and persists a User object |
+| `make_station` | function | Factory function: creates and persists a Station object |
+| `make_availability` | function | Factory function: creates and persists an Availability object |
+| `make_weather_forecast` | function | Factory function: creates and persists a WeatherForecast object |
+| `auth_headers` | function | Returns tuple `(user, headers)` where `headers` contains `Authorization: Bearer …` |
 
-**测试命名约定**
+**Test Naming Convention**
 
-测试函数遵循 `test_<操作>_<条件>_<期望结果>` 的命名规则，例如：
+Test functions follow the `test_<action>_<condition>_<expected_result>` pattern, for example:
 
 ```
 test_register_success
@@ -320,36 +381,83 @@ test_get_stations_empty_db_returns_empty_list
 
 ---
 
-## 五、Jenkins CI/CD
+## 🔄 CI/CD (Jenkins)
 
-项目使用 Kubernetes Agent + Jenkins Pipeline（见仓库根目录 `Jenkinsfile`）。
+The project uses a Kubernetes Agent + Jenkins Pipeline (see `Jenkinsfile` in the repository root).
 
-**流程说明（与 `Jenkinsfile` 阶段一致）：**
+**Pipeline stages:**
 
-1. **拉取代码** - 从 Git 仓库拉取当前构建的 SCM 版本  
-2. **Python 语法检查** - 创建 venv，安装依赖，`py_compile` 校验  
-3. **执行测试** - `pytest tests/`，产出 JUnit 报告  
-4. **下载 ML 模型** - 使用凭据从 Hugging Face 拉取 `bike_availability_model.pkl`、`model_features.pkl` 到 `machine_learning/`（供镜像内预测接口使用）  
-5. **构建并推送镜像** - `docker build`，按参数决定是否 `docker push`（`PUSH_IMAGE` 或 `DEPLOY_TO_EC2` 为 true 时会推送）  
-6. **部署到 EC2** - 当分支为 **`main`** 且**非** Pull Request 构建时，将镜像拉取到 EC2 并以 `docker run` 启动（默认 `--network flask-app`，环境文件路径见流水线参数）
+1. **Pull Code** — Checkout from the Git repository
+2. **Python Syntax Check** — Create venv, install dependencies, `py_compile` validation
+3. **Run Tests** — `pytest tests/` with JUnit report output
+4. **Download ML Model** — Pull `bike_availability_model.pkl` and `model_features.pkl` from Hugging Face into `machine_learning/` (used by the prediction endpoint in the Docker image)
+5. **Build and Push Docker Image** — `docker build`; pushes when `PUSH_IMAGE` or `DEPLOY_TO_EC2` is `true`
+6. **Deploy to EC2** — When the branch is **`main`** and **not** a Pull Request build, pulls the image to EC2 and starts it via `docker run` (default `--network flask-app`; env file path set by pipeline parameter)
 
-**Jenkins 需要的凭据（与 `Jenkinsfile` / 参数默认值对应）：**
+**Jenkins credentials required:**
 
-| 凭据 ID                  | 类型               | 说明                     |
-|--------------------------|-------------------|--------------------------|
-| `docker-hub-credentials` | Username/Password | Docker Hub 登录凭据       |
-| `huggingface-token`      | Secret string     | 下载预测模型用 HF Token   |
-| `aws-ec2`                | Secret text       | EC2 服务器地址            |
-| `server-ssh-key`         | SSH Private Key   | EC2 SSH 私钥（参数可改凭据 ID） |
-| `flask-prod.env`         | Secret file       | 生产环境 .env 文件        |
+| Credential ID | Type | Description |
+|---------------|------|-------------|
+| `docker-hub-credentials` | Username/Password | Docker Hub login credentials |
+| `huggingface-token` | Secret string | HF token for downloading prediction models |
+| `aws-ec2` | Secret text | EC2 server address |
+| `server-ssh-key` | SSH Private Key | EC2 SSH private key (credential ID configurable via parameter) |
+| `flask-prod.env` | Secret file | Production `.env` file |
 
-**EC2 部署前准备：**
+**EC2 deployment preparation:**
 
-在 EC2 服务器上执行：
+On the EC2 server, run:
+
 ```bash
-# 创建 Docker 网络
+# Create Docker network
 docker network create flask-app
 
-# 创建 .env 存放目录（Jenkins 会自动上传 .env 文件到此路径）
+# Create .env directory (Jenkins will automatically upload the .env file to this path)
 mkdir -p /opt/flask-app
 ```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! 🎉 If you'd like to contribute, please follow these steps:
+
+1. **Fork** the repository.
+2. **Create a new branch**:
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+3. **Commit your changes**:
+
+```bash
+git commit -m "Add your awesome feature"
+```
+
+4. **Push to the branch**:
+
+```bash
+git push origin feature/your-feature-name
+```
+
+5. **Open a Pull Request** 🚀
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## 📧 Contact
+
+If you have any questions or feedback, feel free to reach out:
+
+- **GitHub Issues**: [Open an Issue](https://github.com/ucdse/flask-app/issues) 🐛
+- **Repository**: [https://github.com/ucdse/flask-app](https://github.com/ucdse/flask-app)
+
+---
+
+Made with ❤️ by the [UCD Software Engineering](https://github.com/ucdse) team. Happy coding! 🎉
