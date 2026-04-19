@@ -1,5 +1,7 @@
 # 🚀 Dublin Bikes Flask App
 
+**English** | [🌐 中文](./README_zh.md)
+
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1-green.svg)](https://flask.palletsprojects.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
