@@ -91,7 +91,7 @@ def get_station_predictions(station_id: int) -> List[Dict[str, Any]]:
     # Reorder strictly according to _features column names and order
     df_input = pd.DataFrame(input_rows)[_features]
 
-    # Use random forest for batch prediction (even for 24-48 hour predictions, it takes only ~1 millisecond)
+    # Use the currently exported sklearn regression model for batch prediction
     predictions = _model.predict(df_input)
 
     # 4. Assemble and return results

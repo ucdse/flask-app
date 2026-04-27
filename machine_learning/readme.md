@@ -22,7 +22,7 @@ Notebook 中对比的模型包括：
 - Random Forest Regressor
 - Gradient Boosting Regressor
 
-当前 notebook 中最终保存的是表现最好的 `Random Forest` 模型。
+当前 notebook 中最终保存的是表现最好的 `Decision Tree` 模型。
 
 ## 使用方法
 
