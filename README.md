@@ -41,7 +41,7 @@
 
 - **🔐 User Authentication**: Registration, login (JWT), email verification, and token refresh
 - **🚲 Station & Availability**: Query bike stations, availability data, and latest status across all stations
-- **🤖 ML Prediction**: Bike availability prediction powered by a Random Forest model
+- **🤖 ML Prediction**: Bike availability prediction powered by a Decision Tree model
 - **🌤️ Weather Forecast**: Real-time weather data via OpenWeatherMap API
 - **🗺️ Route Planning**: Server-side route calculation with Google Maps Geocoding
 - **💬 AI Chat**: Intelligent chatbot powered by Alibaba Cloud Qwen (supports SSE streaming)
@@ -273,7 +273,7 @@ tests/
 ├── test_chat_routes.py              # Chat route HTTP layer (SSE streaming & standard response)
 ├── test_chat_service.py             # Chat service: conversation messages, session ID generation
 ├── test_chat_service_llm.py         # Chat service: LLM call paths (Qwen / OpenAI)
-└── test_prediction_service.py       # Availability prediction service (Random Forest model)
+└── test_prediction_service.py       # Availability prediction service (Decision Tree model)
 ```
 
 ### Install Test Dependencies

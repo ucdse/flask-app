@@ -41,7 +41,7 @@
 
 - **🔐 用户认证**：注册、登录（JWT）、邮箱验证、令牌刷新
 - **🚲 站点与可用性**：查询站点、可用性数据及全站最新状态
-- **🤖 机器学习预测**：基于随机森林模型的自行车可用性预测
+- **🤖 机器学习预测**：基于决策树模型的自行车可用性预测
 - **🌤️ 天气预报**：通过 OpenWeatherMap API 获取实时天气数据
 - **🗺️ 路线规划**：结合 Google Maps Geocoding 的服务端路线计算
 - **💬 AI 聊天**：基于阿里云通义千问的智能聊天机器人（支持 SSE 流式响应）
@@ -273,7 +273,7 @@ tests/
 ├── test_chat_routes.py              # 聊天路由 HTTP 层（SSE 流式 & 标准响应）
 ├── test_chat_service.py             # 聊天服务：对话消息、会话 ID 生成
 ├── test_chat_service_llm.py         # 聊天服务：LLM 调用路径（通义千问 / OpenAI）
-└── test_prediction_service.py       # 可用性预测服务（随机森林模型）
+└── test_prediction_service.py       # 可用性预测服务（决策树模型）
 ```
 
 ### 安装测试依赖
